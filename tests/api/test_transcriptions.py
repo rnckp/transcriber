@@ -203,8 +203,13 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
     assert "Your transcript appears here after you record or upload audio." in response.text
     assert 'defaultUploadFilename' in response.text
     assert 'readyStatusMessage' in response.text
+    assert 'uploadReadyStatusMessage' in response.text
+    assert 'audioFileButtonLabel' in response.text
+    assert 'audioFileEmptyLabel' in response.text
     assert '<\\/script><script>window.injected=true<\\/script>' in response.text
     assert 'saveSuccessMessage' in response.text
     assert 'id="audio-file"' in response.text
+    assert 'id="audio-file-button"' in response.text
+    assert 'id="audio-file-name"' in response.text
     assert 'id="upload-button"' in response.text
     assert 'id="save-button"' in response.text

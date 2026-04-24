@@ -80,6 +80,7 @@ class UiConfig(BaseModel):
     copy_feedback_ms: int = 1400
     processing_status_message: str = "Processing recording locally..."
     upload_status_message: str = "Uploading audio file for transcription..."
+    upload_ready_status_message: str = "Ready to upload {filename}."
     empty_recording_message: str = "Record a little audio before stopping."
     missing_upload_message: str = "Choose an audio file before uploading."
     ready_status_message: str = "Ready to record or upload audio."
@@ -96,6 +97,8 @@ class UiConfig(BaseModel):
     )
     save_success_message: str = "Saved transcript as {filename}."
     save_unavailable_message: str = "Transcript download is unavailable in this browser."
+    audio_file_button_label: str = "Choose Audio File"
+    audio_file_empty_label: str = "No file selected"
     copy_button_label: str = "Copy"
     copy_success_label: str = "Copied"
     record_button_label: str = "Record"
@@ -116,6 +119,7 @@ class UiConfig(BaseModel):
     @field_validator(
         "processing_status_message",
         "upload_status_message",
+        "upload_ready_status_message",
         "empty_recording_message",
         "missing_upload_message",
         "ready_status_message",
@@ -126,6 +130,8 @@ class UiConfig(BaseModel):
         "clipboard_unavailable_message",
         "save_success_message",
         "save_unavailable_message",
+        "audio_file_button_label",
+        "audio_file_empty_label",
         "copy_button_label",
         "copy_success_label",
         "record_button_label",

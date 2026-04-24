@@ -296,24 +296,34 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.92);
 }
 
-input[type="file"] {
-  padding: 12px 14px;
-}
-
-input[type="file"]::file-selector-button {
-  margin-right: 12px;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
   border: 0;
-  border-radius: 999px;
-  padding: 10px 14px;
-  background: rgba(43, 111, 232, 0.1);
-  color: var(--accent-strong);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
 }
 
-input[type="file"]:disabled::file-selector-button {
-  cursor: not-allowed;
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-picker .button-secondary {
+  flex: 0 0 auto;
+}
+
+.file-picker-name {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .controls {

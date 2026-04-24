@@ -38,9 +38,12 @@ logging:
 ui:
   copy_feedback_ms: 1200
   processing_status_message: "Working..."
+  upload_ready_status_message: "Ready for {filename}."
   empty_recording_message: "Need more audio."
   save_success_message: "Saved {filename}."
   save_unavailable_message: "Download not available."
+  audio_file_button_label: "Pick Audio"
+  audio_file_empty_label: "Nothing selected"
 """.strip(),
         encoding="utf-8",
     )
@@ -59,8 +62,11 @@ ui:
     assert config.transcription.upload_chunk_size_mb == 2
     assert config.transcription.default_upload_filename == "capture.webm"
     assert config.ui.copy_feedback_ms == 1200
+    assert config.ui.upload_ready_status_message == "Ready for {filename}."
     assert config.ui.save_success_message == "Saved {filename}."
     assert config.ui.save_unavailable_message == "Download not available."
+    assert config.ui.audio_file_button_label == "Pick Audio"
+    assert config.ui.audio_file_empty_label == "Nothing selected"
 
 
 def test_load_config_rejects_chunk_size_larger_than_max(tmp_path: Path) -> None:
