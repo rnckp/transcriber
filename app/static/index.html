@@ -39,7 +39,11 @@
 
           <div class="field-group field-group-wide">
             <label for="audio-file">Audio File</label>
-            <input id="audio-file" type="file" accept="audio/*,.mp3,.mp4,.m4a,.wav,.webm,.ogg,.flac">
+            <div class="file-picker">
+              <button id="audio-file-button" class="button-secondary" type="button">Choose Audio File</button>
+              <span id="audio-file-name" class="file-picker-name">No file selected</span>
+            </div>
+            <input id="audio-file" class="visually-hidden" type="file" accept="audio/*,.mp3,.mp4,.m4a,.wav,.webm,.ogg,.flac">
             <p class="field-hint">Choose an existing audio file to transcribe, or record directly in the browser.</p>
           </div>
         </div>

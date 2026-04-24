@@ -21,6 +21,8 @@ const elements = {
   language: document.querySelector("#language"),
   modelSize: document.querySelector("#model-size"),
   audioFile: document.querySelector("#audio-file"),
+  audioFileButton: document.querySelector("#audio-file-button"),
+  audioFileName: document.querySelector("#audio-file-name"),
   recordButton: document.querySelector("#record-button"),
   uploadButton: document.querySelector("#upload-button"),
   resetButton: document.querySelector("#reset-button"),
@@ -77,7 +79,13 @@ function hasSelectedUpload() {
 function syncUploadControls() {
   const disabled = state.isRecording || state.isProcessing;
   elements.audioFile.disabled = disabled;
+  elements.audioFileButton.disabled = disabled;
   elements.uploadButton.disabled = disabled || !hasSelectedUpload();
+}
+
+function syncSelectedFileLabel() {
+  const [file] = elements.audioFile.files ?? [];
+  elements.audioFileName.textContent = file?.name || APP_CONFIG.audioFileEmptyLabel;
 }
 
 function syncResultActions() {
@@ -222,6 +230,7 @@ function resetUi() {
   state.lastResult = null;
   elements.transcript.value = "";
   elements.audioFile.value = "";
+  syncSelectedFileLabel();
   elements.timer.textContent = "00:00";
   resetCopyButtonLabel();
   clearResultMeta();
@@ -371,14 +380,23 @@ elements.modelSize.addEventListener("change", () => {
 });
 
 elements.audioFile.addEventListener("change", () => {
+  syncSelectedFileLabel();
   syncUploadControls();
 
   const [file] = elements.audioFile.files ?? [];
   if (file && !state.isProcessing && !state.isRecording) {
-    setStatus(`Ready to upload ${file.name}.`);
+    setStatus(APP_CONFIG.uploadReadyStatusMessage.replace("{filename}", file.name));
   } else if (!file && !state.isProcessing && !state.isRecording) {
     setStatus(APP_CONFIG.readyStatusMessage);
   }
+});
+
+elements.audioFileButton.addEventListener("click", () => {
+  if (elements.audioFileButton.disabled) {
+    return;
+  }
+
+  elements.audioFile.click();
 });
 
 elements.recordButton.addEventListener("click", async () => {
@@ -436,6 +454,8 @@ elements.saveButton.addEventListener("click", () => {
 
 initializePreferences();
 resetCopyButtonLabel();
+elements.audioFileButton.textContent = APP_CONFIG.audioFileButtonLabel;
+syncSelectedFileLabel();
 setTimerState(APP_CONFIG.timerIdleLabel);
 clearResultMeta();
 syncUploadControls();
