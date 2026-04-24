@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transcriber</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace-panel">
+        <div class="panel-heading">
+          <div>
+            <h1>Transcriber</h1>
+            <p class="intro-copy">Choose a language and model, then record or upload audio to transcribe locally. Copy or save the finished transcript as a text file.</p>
+          </div>
+          <div class="timer-card" id="timer-card" aria-label="Recording timer">
+            <span class="timer-label">Elapsed</span>
+            <p class="timer-state" id="timer-state">Idle</p>
+            <div class="recording-signal" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p id="timer">00:00</p>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field-group">
+            <label for="language">Language</label>
+            <select id="language"><!--LANGUAGE_OPTIONS--></select>
+          </div>
+
+          <div class="field-group">
+            <label for="model-size">Model Size</label>
+            <select id="model-size"><!--MODEL_OPTIONS--></select>
+          </div>
+
+          <div class="field-group field-group-wide">
+            <label for="audio-file">Audio File</label>
+            <input id="audio-file" type="file" accept="audio/*,.mp3,.mp4,.m4a,.wav,.webm,.ogg,.flac">
+            <p class="field-hint">Choose an existing audio file to transcribe, or record directly in the browser.</p>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="record-button" class="button-primary" type="button">Record</button>
+          <button id="upload-button" class="button-secondary" type="button" disabled>Upload File</button>
+          <button id="reset-button" class="button-secondary" type="button" disabled>Clear</button>
+          <button id="copy-button" class="button-secondary" type="button" disabled>Copy</button>
+          <button id="save-button" class="button-secondary" type="button" disabled>Save .txt</button>
+        </div>
+
+        <div class="status-row">
+          <p class="status-label">Status</p>
+          <p id="status" aria-live="polite">Ready to record or upload audio.</p>
+        </div>
+
+        <div class="transcript-panel">
+          <div class="transcript-header">
+            <div>
+              <p class="section-label">Output</p>
+              <h2>Transcript</h2>
+            </div>
+          </div>
+
+          <div class="result-meta" id="result-meta" hidden>
+            <span class="result-chip" id="result-language"></span>
+            <span class="result-chip" id="result-model"></span>
+            <span class="result-chip" id="result-duration"></span>
+          </div>
+
+          <textarea
+            id="transcript"
+            readonly
+            placeholder="Your transcript appears here after you record or upload audio."
+          ></textarea>
+        </div>
+      </section>
+    </main>
+    <script>
+      window.APP_CONFIG = "__APP_CONFIG__";
+    </script>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

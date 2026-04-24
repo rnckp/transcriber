@@ -1,0 +1,534 @@
+:root {
+  color-scheme: light;
+  --page-bg: #f6f9fc;
+  --page-bg-deep: #e9f0f8;
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --surface-border: rgba(37, 99, 235, 0.1);
+  --text-strong: #142033;
+  --text-muted: #516177;
+  --text-soft: #6f8098;
+  --accent: #2b6fe8;
+  --accent-strong: #1f5fd0;
+  --accent-soft: rgba(43, 111, 232, 0.08);
+  --shadow-soft: 0 18px 42px rgba(35, 65, 120, 0.08);
+  --shadow-strong: 0 12px 30px rgba(43, 111, 232, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "SF Pro Display", "Neue Haas Grotesk Text", "Helvetica Neue", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 28%),
+    linear-gradient(180deg, #fbfdff 0%, var(--page-bg) 58%, var(--page-bg-deep) 100%);
+  color: var(--text-strong);
+}
+
+.app-shell {
+  width: min(820px, calc(100% - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 32px 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+.workspace-panel {
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid var(--surface-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-soft);
+}
+
+.workspace-panel {
+  padding: 28px;
+  width: 100%;
+  background: linear-gradient(180deg, var(--surface-strong), rgba(250, 252, 255, 0.88));
+}
+
+.section-label,
+.status-label,
+.timer-label,
+label {
+  letter-spacing: 0.01em;
+}
+
+.intro-copy,
+.timer-state {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.section-label,
+.status-label,
+.timer-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+h1,
+h2 {
+  margin: 0;
+  line-height: 1.05;
+  font-weight: 700;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: clamp(1.6rem, 4vw, 2rem);
+}
+
+.intro-copy {
+  margin-top: 10px;
+  max-width: 38rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+h2 {
+  margin-top: 8px;
+  font-size: 1.2rem;
+}
+
+.panel-heading,
+.transcript-header,
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel-heading {
+  margin-bottom: 20px;
+}
+
+.timer-card {
+  min-width: 132px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.95), rgba(241, 246, 253, 0.95));
+  border: 1px solid rgba(37, 99, 235, 0.08);
+  text-align: right;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.timer-state {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.timer-state::after {
+  content: "";
+  display: none;
+}
+
+.timer-state::before {
+  content: "";
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 0 rgba(205, 59, 59, 0);
+}
+
+.timer-card.is-recording .timer-state {
+  color: #b42318;
+}
+
+.timer-card.is-recording .timer-state::after {
+  content: "LIVE";
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.4rem;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(229, 72, 77, 0.14);
+  color: #b42318;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  animation: live-badge-blink 1s steps(2, end) infinite;
+}
+
+.timer-card.is-recording {
+  border-color: rgba(229, 72, 77, 0.26);
+  background: linear-gradient(180deg, rgba(255, 247, 247, 0.96), rgba(255, 241, 242, 0.92));
+  box-shadow: 0 14px 30px rgba(229, 72, 77, 0.14);
+}
+
+.timer-card.is-recording .timer-state::before {
+  background: #e5484d;
+  animation: recording-pulse 1.6s ease-out infinite;
+}
+
+.recording-signal {
+  display: none;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 16px;
+  margin-top: 10px;
+}
+
+.recording-signal span {
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(229, 72, 77, 0.96), rgba(180, 35, 24, 0.88));
+  transform-origin: center bottom;
+}
+
+.timer-card.is-recording .recording-signal {
+  display: inline-flex;
+}
+
+.timer-card.is-recording .recording-signal span {
+  animation: recording-bars 0.9s ease-in-out infinite alternate;
+}
+
+.timer-card.is-recording .recording-signal span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.timer-card.is-recording .recording-signal span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+.timer-card.is-busy .timer-state {
+  color: var(--accent-strong);
+}
+
+.timer-card.is-busy {
+  border-color: rgba(43, 111, 232, 0.16);
+  box-shadow: 0 12px 26px rgba(43, 111, 232, 0.08);
+}
+
+.timer-card.is-busy .timer-state::before {
+  background: var(--accent);
+}
+
+#timer {
+  margin: 10px 0 0;
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-card.is-recording #timer {
+  color: #8f1d1d;
+  animation: live-timer-pulse 1s ease-in-out infinite;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.field-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.field-group-wide {
+  grid-column: 1 / -1;
+}
+
+.field-hint {
+  margin: 10px 2px 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+select,
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+select,
+input,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-strong);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  appearance: none;
+}
+
+select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-soft) 50%),
+    linear-gradient(135deg, var(--text-soft) 50%, transparent 50%);
+  background-position: calc(100% - 22px) calc(50% - 2px), calc(100% - 16px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 40px;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(31, 111, 95, 0.35);
+  box-shadow: 0 0 0 4px rgba(31, 111, 95, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+input[type="file"] {
+  padding: 12px 14px;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(43, 111, 232, 0.1);
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+input[type="file"]:disabled::file-selector-button {
+  cursor: not-allowed;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0 16px;
+}
+
+button {
+  min-height: 3.2rem;
+  border-radius: 999px;
+  border: 0;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease, background-color 140ms ease;
+}
+
+.button-primary {
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  color: #f8fbf9;
+  box-shadow: var(--shadow-strong);
+}
+
+.button-secondary {
+  background: rgba(247, 250, 255, 0.92);
+  color: var(--text-strong);
+  border: 1px solid rgba(37, 99, 235, 0.08);
+}
+
+button:hover:enabled {
+  transform: translateY(-1px);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(43, 111, 232, 0.16);
+}
+
+button:active:enabled {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.status-row {
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(43, 111, 232, 0.12);
+}
+
+#status {
+  margin: 0;
+  color: var(--accent-strong);
+  font-weight: 600;
+  text-align: right;
+}
+
+.transcript-panel {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(250, 252, 255, 0.82);
+  border: 1px solid rgba(37, 99, 235, 0.08);
+}
+
+.result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.result-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(43, 111, 232, 0.08);
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+textarea {
+  min-height: 500px;
+  margin-top: 16px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+@keyframes recording-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.36);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(229, 72, 77, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 72, 77, 0);
+  }
+}
+
+@keyframes recording-bars {
+  0% {
+    transform: scaleY(0.35);
+    opacity: 0.45;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes live-badge-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes live-timer-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.03);
+    opacity: 0.84;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-card,
+  #timer,
+  .recording-signal span,
+  .timer-state::before,
+  .timer-state::after {
+    animation: none !important;
+    transition: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    padding: 24px 0 32px;
+  }
+
+  .workspace-panel {
+    padding: 24px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    width: min(100%, calc(100% - 20px));
+    gap: 16px;
+  }
+
+  .panel-heading,
+  .transcript-header,
+  .status-row,
+  .field-grid,
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field-grid {
+    gap: 14px;
+  }
+
+  .field-group-wide {
+    grid-column: auto;
+  }
+
+  .timer-card,
+  #status {
+    text-align: left;
+  }
+
+  .timer-state {
+    justify-content: flex-start;
+  }
+
+  .recording-signal {
+    justify-content: flex-start;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  textarea {
+    min-height: 240px;
+  }
+}

@@ -1,0 +1,53 @@
+server:
+  host: "127.0.0.1"
+  port: 8000
+transcription:
+  cache_dir: ".cache/models"
+  max_upload_size_mb: 100
+  upload_chunk_size_mb: 1
+  default_upload_filename: "recording.webm"
+  supported_languages:
+    - code: "de"
+      label: "German"
+    - code: "en"
+      label: "English"
+  supported_model_sizes:
+    - id: "tiny"
+      label: "Tiny"
+      model_name: "mlx-community/whisper-tiny-mlx"
+    - id: "base"
+      label: "Base"
+      model_name: "mlx-community/whisper-base-mlx"
+    - id: "small"
+      label: "Small"
+      model_name: "mlx-community/whisper-small-mlx"
+    - id: "medium"
+      label: "Medium"
+      model_name: "mlx-community/whisper-medium-mlx"
+    - id: "large"
+      label: "Large"
+      model_name: "mlx-community/whisper-large-v3-turbo"
+logging:
+  level: "INFO"
+ui:
+  copy_feedback_ms: 1400
+  processing_status_message: "Processing recording locally..."
+  upload_status_message: "Uploading audio file for transcription..."
+  empty_recording_message: "Record a little audio before stopping."
+  missing_upload_message: "Choose an audio file before uploading."
+  ready_status_message: "Ready to record or upload audio."
+  recording_status_message: "Recording..."
+  completion_status_message: "Transcription complete."
+  microphone_blocked_message: "Microphone access is blocked. Allow access in your browser settings and try again."
+  recording_start_error_message: "Recording could not start. Check your microphone and try again."
+  clipboard_unavailable_message: "Clipboard access is unavailable in this browser."
+  save_success_message: "Saved transcript as {filename}."
+  save_unavailable_message: "Transcript download is unavailable in this browser."
+  copy_button_label: "Copy"
+  copy_success_label: "Copied"
+  record_button_label: "Record"
+  stop_button_label: "Stop"
+  timer_idle_label: "Idle"
+  timer_ready_label: "Ready"
+  timer_recording_label: "Recording"
+  timer_processing_label: "Processing"
