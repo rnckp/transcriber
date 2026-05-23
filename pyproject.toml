@@ -9,7 +9,7 @@ dependencies = [
     "mlx-whisper>=0.4.1",
     "pydantic>=2.9.0",
     "python-dotenv>=1.0.1",
-    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.27",
     "pyyaml>=6.0.2",
     "uvicorn[standard]>=0.30.6",
 ]
