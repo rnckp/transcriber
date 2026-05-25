@@ -78,14 +78,17 @@ class LoggingConfig(BaseModel):
 
 class UiConfig(BaseModel):
     copy_feedback_ms: int = 1400
-    processing_status_message: str = "Processing recording locally..."
-    upload_status_message: str = "Uploading audio file for transcription..."
-    upload_ready_status_message: str = "Ready to upload {filename}."
+    processing_status_message: str = "Transcribing audio locally..."
+    upload_status_message: str = "Processing audio file locally..."
+    upload_ready_status_message: str = "Ready to process {filename}."
     empty_recording_message: str = "Record a little audio before stopping."
-    missing_upload_message: str = "Choose an audio file before uploading."
-    ready_status_message: str = "Ready to record or upload audio."
+    missing_upload_message: str = "Choose an audio file before processing."
+    ready_status_message: str = "Ready to record or process audio."
     recording_status_message: str = "Recording..."
     completion_status_message: str = "Transcription complete."
+    processing_network_error_message: str = (
+        "Processing failed before the server returned a response."
+    )
     microphone_blocked_message: str = (
         "Microphone access is blocked. Allow access in your browser settings and try again."
     )
@@ -125,6 +128,7 @@ class UiConfig(BaseModel):
         "ready_status_message",
         "recording_status_message",
         "completion_status_message",
+        "processing_network_error_message",
         "microphone_blocked_message",
         "recording_start_error_message",
         "clipboard_unavailable_message",

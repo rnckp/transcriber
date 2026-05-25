@@ -190,6 +190,16 @@ function formatDuration(totalSeconds) {
   return `${minutes}:${seconds}`;
 }
 
+function formatPercent(value) {
+  return `${Math.min(100, Math.max(0, Math.round(value * 100)))}%`;
+}
+
+function waitForNextFrame() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(resolve);
+  });
+}
+
 function sanitizeFilenamePart(value, fallback) {
   const normalized = String(value ?? "")
     .trim()
@@ -252,21 +262,44 @@ function setProcessingState(statusMessage) {
 
 async function submitAudio(audio, filename, statusMessage) {
   setProcessingState(statusMessage);
+  await waitForNextFrame();
 
   const formData = new FormData();
   formData.append("audio", audio, filename);
   formData.append("language", elements.language.value);
   formData.append("model_size", elements.modelSize.value);
 
-  const response = await fetch("/api/transcriptions", {
-    method: "POST",
-    body: formData,
-  });
-  const payload = await response.json();
+  const payload = await new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
 
-  if (!response.ok) {
-    throw new Error(payload.error.message);
-  }
+    request.open("POST", "/api/transcriptions");
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        setStatus(`${statusMessage} ${formatPercent(event.loaded / event.total)}`);
+      }
+    };
+    request.upload.onload = () => {
+      setStatus(APP_CONFIG.processingStatusMessage);
+    };
+    request.onload = () => {
+      let responsePayload;
+      try {
+        responsePayload = JSON.parse(request.responseText);
+      } catch {
+        reject(new Error(APP_CONFIG.processingNetworkErrorMessage));
+        return;
+      }
+      if (request.status < 200 || request.status >= 300) {
+        reject(new Error(responsePayload.error?.message ?? APP_CONFIG.processingNetworkErrorMessage));
+        return;
+      }
+      resolve(responsePayload);
+    };
+    request.onerror = () => {
+      reject(new Error(APP_CONFIG.processingNetworkErrorMessage));
+    };
+    request.send(formData);
+  });
 
   state.isRecording = false;
   state.isProcessing = false;

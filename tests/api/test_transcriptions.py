@@ -197,19 +197,31 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
     assert '<option value="fr">French</option>' in response.text
     assert '<option value="custom">Custom</option>' in response.text
     assert '<option value="de">German</option>' not in response.text
-    assert "record or upload audio to transcribe locally" in response.text
+    assert "record or process audio to transcribe locally" in response.text
     assert "Copy or save the finished transcript as a text file." in response.text
-    assert "Ready to record or upload audio." in response.text
-    assert "Your transcript appears here after you record or upload audio." in response.text
-    assert 'defaultUploadFilename' in response.text
-    assert 'readyStatusMessage' in response.text
-    assert 'uploadReadyStatusMessage' in response.text
-    assert 'audioFileButtonLabel' in response.text
-    assert 'audioFileEmptyLabel' in response.text
-    assert '<\\/script><script>window.injected=true<\\/script>' in response.text
-    assert 'saveSuccessMessage' in response.text
+    assert "Ready to record or process audio." in response.text
+    assert (
+        "Your transcript appears here after you record or process audio."
+        in response.text
+    )
+    assert ">Process File</button>" in response.text
+    assert "defaultUploadFilename" in response.text
+    assert "readyStatusMessage" in response.text
+    assert "uploadReadyStatusMessage" in response.text
+    assert "audioFileButtonLabel" in response.text
+    assert "audioFileEmptyLabel" in response.text
+    assert "<\\/script><script>window.injected=true<\\/script>" in response.text
+    assert "saveSuccessMessage" in response.text
     assert 'id="audio-file"' in response.text
     assert 'id="audio-file-button"' in response.text
     assert 'id="audio-file-name"' in response.text
     assert 'id="upload-button"' in response.text
     assert 'id="save-button"' in response.text
+
+
+def test_static_frontend_reports_file_processing_progress() -> None:
+    app_js = Path("app/static/app.js").read_text(encoding="utf-8")
+
+    assert "XMLHttpRequest" in app_js
+    assert ".upload.onprogress" in app_js
+    assert "formatPercent" in app_js

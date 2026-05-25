@@ -15,7 +15,7 @@
 ## Features
 
 - Runs locally on Apple Silicon.
-- Browser-based microphone recording and audio file upload.
+- Browser-based microphone recording and local audio file processing.
 - Local transcription with configurable language and MLX Whisper model size.
 - Transcript metadata in the UI, including language, model, and detected duration.
 - Copy-to-clipboard and save-as-`.txt` actions for completed transcripts.
@@ -39,7 +39,7 @@ uv run uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000` in your browser.
 
-In the browser UI, choose a language and model, then either record in the browser or upload an audio file. The app shows recording and processing state, clears old output when a new recording starts, and displays language, model, and duration metadata with the result. Finished transcripts can be copied to the clipboard or saved locally as plain `.txt` files.
+In the browser UI, choose a language and model, then either record in the browser or process an audio file. The app shows recording and processing state, clears old output when a new recording starts, and displays language, model, and duration metadata with the result. Finished transcripts can be copied to the clipboard or saved locally as plain `.txt` files.
 
 ## Configuration
 
@@ -52,7 +52,7 @@ Key options:
 - `transcription.cache_dir` stores downloaded Whisper model files.
 - `transcription.max_upload_size_mb` limits upload size.
 - `transcription.upload_chunk_size_mb` controls temp-file streaming chunk size while uploads are staged.
-- `transcription.default_upload_filename` defines the fallback filename used for browser uploads.
+- `transcription.default_upload_filename` defines the fallback filename used for browser recordings.
 - `transcription.supported_languages` defines the language picker and backend validation.
 - `transcription.supported_model_sizes` defines the available MLX Whisper models.
 - `ui.*` tunes browser-side status text, timer labels, and button copy without editing JavaScript.

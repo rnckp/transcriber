@@ -67,6 +67,7 @@ async def index(request: Request) -> HTMLResponse:
             "readyStatusMessage": runtime_config.ui.ready_status_message,
             "recordingStatusMessage": runtime_config.ui.recording_status_message,
             "completionStatusMessage": runtime_config.ui.completion_status_message,
+            "processingNetworkErrorMessage": runtime_config.ui.processing_network_error_message,
             "microphoneBlockedMessage": runtime_config.ui.microphone_blocked_message,
             "recordingStartErrorMessage": runtime_config.ui.recording_start_error_message,
             "clipboardUnavailableMessage": runtime_config.ui.clipboard_unavailable_message,
