@@ -1,6 +1,7 @@
 server:
   host: "127.0.0.1"
   port: 8000
+
 transcription:
   cache_dir: ".cache/models"
   max_upload_size_mb: 100
@@ -40,8 +41,10 @@ transcription:
   vibevoice_do_sample: false
   vibevoice_num_beams: 1
   vibevoice_repetition_penalty: 1.0
+
 logging:
   level: "INFO"
+
 ui:
   copy_feedback_ms: 1400
   progress_model_factors:
