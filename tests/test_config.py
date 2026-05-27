@@ -37,7 +37,6 @@ transcription:
       label: "VibeVoice ASR 7B"
       model_name: "microsoft/VibeVoice-ASR"
       backend: "vibevoice_asr"
-  vibevoice_repo_path: "../../_ GitHub generell/VibeVoice"
 logging:
   level: "INFO"
 ui:
@@ -67,10 +66,6 @@ ui:
     ]
     assert config.transcription.supported_model_sizes[0].backend == "mlx_whisper"
     assert config.transcription.supported_model_sizes[2].backend == "vibevoice_asr"
-    assert (
-        config.transcription.vibevoice_repo_path
-        == (tmp_path / "../../_ GitHub generell/VibeVoice").resolve()
-    )
     assert config.transcription.vibevoice_max_new_tokens == 4096
     assert config.transcription.vibevoice_temperature == 0.0
     assert config.transcription.vibevoice_top_p == 1.0
@@ -140,7 +135,6 @@ transcription:
     - id: "small"
       label: "Small"
       model_name: "mlx-community/whisper-small-mlx"
-  vibevoice_repo_path: "VibeVoice"
 logging:
   level: "INFO"
 """.strip(),
@@ -150,7 +144,6 @@ logging:
     config = load_config(config_file)
 
     assert config.transcription.cache_dir == tmp_path / "models"
-    assert config.transcription.vibevoice_repo_path == tmp_path / "VibeVoice"
 
 
 @pytest.mark.parametrize(

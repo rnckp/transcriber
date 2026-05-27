@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -26,20 +25,6 @@ class VibeVoiceASRService:
         }
         self._backends: dict[str, Any] = {}
         self._backend_lock = Lock()
-
-    def _resolve_repo_path(self) -> Path:
-        if self._config.vibevoice_repo_path is None:
-            raise TranscriptionError(
-                "Set transcription.vibevoice_repo_path before using VibeVoice ASR."
-            )
-
-        repo_path = self._config.vibevoice_repo_path.expanduser()
-        if not repo_path.is_absolute():
-            repo_path = Path.cwd() / repo_path
-
-        if not repo_path.exists():
-            raise TranscriptionError(f"VibeVoice repo path does not exist: {repo_path}")
-        return repo_path
 
     def _detect_device(self) -> str:
         if self._config.vibevoice_device != "auto":
@@ -88,17 +73,12 @@ class VibeVoiceASRService:
         return "sdpa"
 
     def _load_backend(self, model_name: str) -> Any:
-        repo_path = self._resolve_repo_path()
-        repo_path_text = str(repo_path)
-        if repo_path_text not in sys.path:
-            sys.path.insert(0, repo_path_text)
-
         try:
-            from demo.vibevoice_asr_gradio_demo import VibeVoiceASRInference
+            from app.services.vibevoice_inference import VibeVoiceASRInference
         except ImportError as exc:
             raise TranscriptionError(
-                "VibeVoice imports failed. Install the VibeVoice dependency stack "
-                "or add the local VibeVoice package to this uv environment."
+                "VibeVoice imports failed. Run `uv sync` to install the declared "
+                "VibeVoice runtime dependency stack."
             ) from exc
 
         device = self._detect_device()

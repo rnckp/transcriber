@@ -40,7 +40,6 @@ class TranscriptionConfig(BaseModel):
     default_upload_filename: str = "recording.webm"
     supported_languages: list[SupportedLanguage] = Field(default_factory=list)
     supported_model_sizes: list[SupportedModelSize] = Field(default_factory=list)
-    vibevoice_repo_path: Path | None = None
     vibevoice_device: str = "auto"
     vibevoice_dtype: str = "auto"
     vibevoice_attention: str = "auto"
@@ -354,11 +353,6 @@ def load_config(path: Path) -> AppConfig:
         config_dir,
         config.transcription.cache_dir,
     )
-    if config.transcription.vibevoice_repo_path is not None:
-        config.transcription.vibevoice_repo_path = _resolve_config_path(
-            config_dir,
-            config.transcription.vibevoice_repo_path,
-        )
     return config
 
 

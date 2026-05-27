@@ -1,16 +1,13 @@
+import sys
+import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.config import SupportedLanguage, SupportedModelSize, TranscriptionConfig
-from app.services.transcription import TranscriptionError
 from app.services.vibevoice_asr import VibeVoiceASRService
 
 
 def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
-    repo_path = tmp_path / "VibeVoice"
-    repo_path.mkdir()
     config = TranscriptionConfig(
         supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
@@ -21,7 +18,6 @@ def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
                 backend="vibevoice_asr",
             )
         ],
-        vibevoice_repo_path=repo_path,
     )
     backend = MagicMock()
     backend.transcribe.return_value = {
@@ -64,8 +60,6 @@ def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
 
 
 def test_vibevoice_uses_configured_generation_settings(tmp_path: Path) -> None:
-    repo_path = tmp_path / "VibeVoice"
-    repo_path.mkdir()
     config = TranscriptionConfig(
         supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
@@ -76,7 +70,6 @@ def test_vibevoice_uses_configured_generation_settings(tmp_path: Path) -> None:
                 backend="vibevoice_asr",
             )
         ],
-        vibevoice_repo_path=repo_path,
         vibevoice_temperature=0.2,
         vibevoice_top_p=0.8,
         vibevoice_do_sample=True,
@@ -105,8 +98,6 @@ def test_vibevoice_uses_configured_generation_settings(tmp_path: Path) -> None:
 
 
 def test_vibevoice_caches_backend_per_model_id(tmp_path: Path) -> None:
-    repo_path = tmp_path / "VibeVoice"
-    repo_path.mkdir()
     config = TranscriptionConfig(
         supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
@@ -123,7 +114,6 @@ def test_vibevoice_caches_backend_per_model_id(tmp_path: Path) -> None:
                 backend="vibevoice_asr",
             ),
         ],
-        vibevoice_repo_path=repo_path,
     )
     first_backend = MagicMock()
     first_backend.transcribe.return_value = {"raw_text": "first", "segments": []}
@@ -149,7 +139,7 @@ def test_vibevoice_caches_backend_per_model_id(tmp_path: Path) -> None:
     ]
 
 
-def test_vibevoice_requires_repo_path(tmp_path: Path) -> None:
+def test_vibevoice_loads_local_inference_adapter() -> None:
     config = TranscriptionConfig(
         supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
@@ -161,8 +151,22 @@ def test_vibevoice_requires_repo_path(tmp_path: Path) -> None:
             )
         ],
     )
+    backend = object()
+    backend_class = MagicMock(return_value=backend)
+    fake_module = types.SimpleNamespace(VibeVoiceASRInference=backend_class)
 
-    with pytest.raises(TranscriptionError, match="vibevoice_repo_path"):
-        VibeVoiceASRService(config).transcribe(
-            tmp_path / "audio.webm", "de", "vibevoice-7b"
-        )
+    with (
+        patch.dict(sys.modules, {"app.services.vibevoice_inference": fake_module}),
+        patch.object(VibeVoiceASRService, "_detect_device", return_value="cpu"),
+        patch.object(VibeVoiceASRService, "_resolve_dtype", return_value="float32"),
+        patch.object(VibeVoiceASRService, "_resolve_attention", return_value="sdpa"),
+    ):
+        result = VibeVoiceASRService(config)._load_backend("microsoft/VibeVoice-ASR")
+
+    assert result is backend
+    backend_class.assert_called_once_with(
+        model_path="microsoft/VibeVoice-ASR",
+        device="cpu",
+        dtype="float32",
+        attn_implementation="sdpa",
+    )

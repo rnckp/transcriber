@@ -31,7 +31,6 @@ transcription:
       label: "VibeVoice ASR 7B"
       model_name: "microsoft/VibeVoice-ASR"
       backend: "vibevoice_asr"
-  vibevoice_repo_path: "../../_ GitHub generell/VibeVoice"
   vibevoice_device: "auto"
   vibevoice_dtype: "auto"
   vibevoice_attention: "auto"

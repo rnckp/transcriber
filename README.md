@@ -17,7 +17,7 @@ Local browser-based transcription app for Apple Silicon Macs. It serves a FastAP
 - macOS on Apple Silicon
 - Python 3.12+
 - `uv`
-- For `vibevoice-7b`: a local VibeVoice checkout matching `transcription.vibevoice_repo_path` in `config.yaml`, with the VibeVoice dependency stack installed in this `uv` environment
+- For `vibevoice-7b`: enough memory for the 7B ASR model; browser `.webm` recordings also need the `ffmpeg` command available on `PATH` for audio decoding
 
 ## Setup
 
@@ -25,7 +25,7 @@ Local browser-based transcription app for Apple Silicon Macs. It serves a FastAP
 uv sync
 ```
 
-The base install does not install VibeVoice. The `vibevoice-7b` option is available only after the VibeVoice dependencies are installed into this environment and `transcription.vibevoice_repo_path` points to a local checkout containing `demo/vibevoice_asr_gradio_demo.py`.
+The VibeVoice ASR source needed by this app is vendored in `vibevoice/` under the upstream MIT license, so no second VibeVoice checkout is required.
 
 ## Run
 
@@ -42,7 +42,7 @@ Choose a language and model, then either record from the browser microphone or c
 Configured model options live in `config.yaml`:
 
 - `tiny`, `base`, `small`, `medium`, `large`: `mlx-whisper` models cached under `transcription.cache_dir`
-- `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local VibeVoice repo helper
+- `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local vendored VibeVoice package
 
 Models download on first use and are reused from their cache afterward. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
 
@@ -90,7 +90,7 @@ Edit `config.yaml` for runtime settings:
 - `transcription.upload_chunk_size_mb`: temp-file streaming chunk size
 - `transcription.supported_languages`: language picker and backend validation
 - `transcription.supported_model_sizes`: model picker, repo ids, and backend routing
-- `transcription.vibevoice_*`: VibeVoice repo path, device, dtype, attention mode, and generation settings
+- `transcription.vibevoice_*`: VibeVoice device, dtype, attention mode, and generation settings
 - `logging.level`: structured JSON log level
 - `ui.*`: browser labels, status messages, and progress timing heuristics
 
@@ -111,7 +111,8 @@ Project layout:
 - `app/services/`: backend routing, `mlx-whisper`, and VibeVoice integration
 - `app/static/`: browser UI
 - `tests/`: API, config, and service tests
+- `vibevoice/`: vendored VibeVoice ASR model and processor code from Microsoft VibeVoice, MIT licensed
 
 ## License
 
-MIT License
+MIT License. Vendored VibeVoice code under `vibevoice/` is also MIT licensed; see `vibevoice/LICENSE`.
