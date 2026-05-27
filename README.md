@@ -57,6 +57,7 @@ Key options:
 - `transcription.supported_languages` defines the language picker and backend validation.
 - `transcription.supported_model_sizes` defines the available models and backend for each option.
 - `transcription.vibevoice_repo_path` points to the local VibeVoice checkout used by the VibeVoice ASR backend.
+- `transcription.vibevoice_max_new_tokens` caps VibeVoice generation length; raising it can sharply increase RAM use.
 - `ui.*` tunes browser-side status text, timer labels, and button copy without editing JavaScript.
 
 The default configuration includes German and English, a 100 MB upload limit, and `tiny`, `base`, `small`, `medium`, `large`, and `vibevoice-7b` model options.

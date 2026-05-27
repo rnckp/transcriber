@@ -70,6 +70,7 @@ ui:
     assert config.transcription.vibevoice_repo_path == Path(
         "../../_ GitHub generell/VibeVoice"
     )
+    assert config.transcription.vibevoice_max_new_tokens == 4096
     assert config.transcription.upload_chunk_size_mb == 2
     assert config.transcription.default_upload_filename == "capture.webm"
     assert config.ui.copy_feedback_ms == 1200

@@ -56,7 +56,7 @@ def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
     assert [segment.speaker for segment in result.segments] == ["1", "2"]
     assert backend.transcribe.call_args.kwargs == {
         "audio_path": str(tmp_path / "audio.webm"),
-        "max_new_tokens": 32768,
+        "max_new_tokens": 4096,
         "temperature": 0.0,
         "top_p": 1.0,
         "do_sample": False,

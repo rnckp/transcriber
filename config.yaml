@@ -35,7 +35,7 @@ transcription:
   vibevoice_device: "auto"
   vibevoice_dtype: "auto"
   vibevoice_attention: "auto"
-  vibevoice_max_new_tokens: 32768
+  vibevoice_max_new_tokens: 4096
 logging:
   level: "INFO"
 ui:

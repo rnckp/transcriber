@@ -44,7 +44,7 @@ class TranscriptionConfig(BaseModel):
     vibevoice_device: str = "auto"
     vibevoice_dtype: str = "auto"
     vibevoice_attention: str = "auto"
-    vibevoice_max_new_tokens: int = 32768
+    vibevoice_max_new_tokens: int = 4096
 
     @field_validator("max_upload_size_mb")
     @classmethod

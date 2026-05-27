@@ -60,7 +60,11 @@ class VibeVoiceASRService:
 
         dtype = self._config.vibevoice_dtype
         if dtype == "auto":
-            return torch.bfloat16 if device in {"cuda", "xpu"} else torch.float32
+            if device in {"cuda", "xpu"}:
+                return torch.bfloat16
+            if device == "mps":
+                return torch.float16
+            return torch.float32
 
         dtype_map = {
             "bfloat16": torch.bfloat16,
