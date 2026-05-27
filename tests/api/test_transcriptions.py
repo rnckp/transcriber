@@ -261,10 +261,13 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     assert 'id="processing-progress"' in index_html
     assert 'id="progress-fill"' in index_html
     assert 'id="progress-eta"' in index_html
+    assert 'id="progress-percent"' in index_html
     assert 'id="processing-progress" hidden' not in index_html
+    assert "0%" in index_html
     assert "XMLHttpRequest" in app_js
     assert ".upload.onprogress" in app_js
     assert "formatPercent" in app_js
     assert "estimateProcessingSeconds" in app_js
     assert "setProgress" in app_js
     assert "time left" in app_js
+    assert "Math.max(4, percent)" in app_js

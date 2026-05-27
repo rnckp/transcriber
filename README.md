@@ -17,7 +17,7 @@
 - Runs locally on Apple Silicon.
 - Browser-based microphone recording and local audio file processing.
 - Local transcription with configurable language and model selection.
-- Optional Microsoft VibeVoice ASR 7B transcription with speaker diarization and segment timestamps.
+- Optional Microsoft VibeVoice ASR 7B transcription with speaker diarization.
 - Transcript metadata in the UI, including language, model, and detected duration.
 - Copy-to-clipboard and save-as-`.txt` actions for completed transcripts.
 - Configurable host, port, cache directory, upload limits, and browser status strings.

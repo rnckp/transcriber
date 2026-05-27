@@ -161,10 +161,7 @@ class VibeVoiceASRService:
         return segments
 
     def _format_segment(self, segment: TranscriptionSegment) -> str:
-        speaker_prefix = f"Speaker {segment.speaker}: {segment.text}"
-        if segment.start_time is None or segment.end_time is None:
-            return speaker_prefix
-        return f"[{segment.start_time:.2f}s - {segment.end_time:.2f}s] {speaker_prefix}"
+        return f"Speaker {segment.speaker}: {segment.text}"
 
     def transcribe(
         self,
@@ -187,7 +184,7 @@ class VibeVoiceASRService:
                 repetition_penalty=1.0,
             )
             segments = self._normalize_segments(result.get("segments"))
-            transcript = "\n".join(
+            transcript = "\n\n".join(
                 self._format_segment(segment) for segment in segments
             )
             if not transcript:

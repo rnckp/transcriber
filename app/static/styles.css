@@ -403,7 +403,16 @@ button:disabled {
   margin-bottom: 10px;
 }
 
-#progress-eta {
+.progress-status {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+#progress-eta,
+#progress-percent {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.92rem;
@@ -411,11 +420,18 @@ button:disabled {
   text-align: right;
 }
 
+#progress-percent {
+  min-width: 3rem;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
 .progress-track {
-  height: 10px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(43, 111, 232, 0.1);
+  background: rgba(43, 111, 232, 0.14);
+  border: 1px solid rgba(43, 111, 232, 0.2);
 }
 
 #progress-fill {
@@ -563,8 +579,13 @@ textarea {
     grid-column: auto;
   }
 
+  .progress-status {
+    justify-content: flex-start;
+  }
+
   .timer-card,
   #progress-eta,
+  #progress-percent,
   #status {
     text-align: left;
   }

@@ -49,9 +49,7 @@ def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
             "vibevoice-7b",
         )
 
-    assert result.transcript == (
-        "[0.00s - 1.25s] Speaker 1: Hallo Welt\n[1.25s - 2.50s] Speaker 2: Guten Tag"
-    )
+    assert result.transcript == "Speaker 1: Hallo Welt\n\nSpeaker 2: Guten Tag"
     assert result.duration_seconds == 2.5
     assert [segment.speaker for segment in result.segments] == ["1", "2"]
     assert backend.transcribe.call_args.kwargs == {

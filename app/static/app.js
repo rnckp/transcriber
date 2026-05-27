@@ -43,6 +43,7 @@ const elements = {
   processingProgress: document.querySelector("#processing-progress"),
   progressFill: document.querySelector("#progress-fill"),
   progressEta: document.querySelector("#progress-eta"),
+  progressPercent: document.querySelector("#progress-percent"),
   progressTrack: document.querySelector(".progress-track"),
 };
 
@@ -190,9 +191,11 @@ function formatRemainingTime(totalSeconds) {
 function setProgress(value, label) {
   const progress = Math.min(1, Math.max(0, value));
   const percent = Math.round(progress * 100);
+  const visiblePercent = Math.max(4, percent);
 
   elements.processingProgress.hidden = false;
-  elements.progressFill.style.width = `${percent}%`;
+  elements.progressFill.style.width = `${visiblePercent}%`;
+  elements.progressPercent.textContent = `${percent}%`;
   elements.progressTrack.setAttribute("aria-valuenow", String(percent));
   elements.progressEta.textContent = label;
 }
@@ -202,9 +205,7 @@ function resetProgress() {
   state.progressStartedAt = null;
   state.estimatedProcessingSeconds = null;
   elements.processingProgress.hidden = false;
-  elements.progressFill.style.width = "0%";
-  elements.progressTrack.setAttribute("aria-valuenow", "0");
-  elements.progressEta.textContent = "Waiting for audio.";
+  setProgress(0, "Waiting for audio.");
 }
 
 function estimateProcessingSeconds(audioSeconds, modelSize) {
@@ -330,32 +331,14 @@ function buildTranscriptFilename() {
   return `transcription-${language}-${modelSize}-${timestamp}.txt`;
 }
 
-function formatSegmentTime(value) {
-  if (value == null) {
-    return null;
-  }
-
-  const seconds = Number(value);
-  if (!Number.isFinite(seconds)) {
-    return null;
-  }
-
-  return `${seconds.toFixed(2)}s`;
-}
-
 function formatDiarizedTranscript(payload) {
   if (!Array.isArray(payload.segments) || payload.segments.length === 0) {
     return payload.transcript ?? "";
   }
 
   return payload.segments
-    .map((segment) => {
-      const startTime = formatSegmentTime(segment.start_time);
-      const endTime = formatSegmentTime(segment.end_time);
-      const timing = startTime && endTime ? `[${startTime} - ${endTime}] ` : "";
-      return `${timing}Speaker ${segment.speaker}: ${segment.text}`;
-    })
-    .join("\n");
+    .map((segment) => `Speaker ${segment.speaker}: ${segment.text}`)
+    .join("\n\n");
 }
 
 function updateTimer() {
