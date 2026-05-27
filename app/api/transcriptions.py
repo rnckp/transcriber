@@ -6,7 +6,12 @@ from fastapi import APIRouter, File, Form, Request, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
-from app.models import ApiError, ErrorResponse, TranscriptionResponse
+from app.models import (
+    ApiError,
+    ErrorResponse,
+    TranscriptionResponse,
+    TranscriptionSegmentResponse,
+)
 from app.services.transcription import (
     TranscriptionError,
     UnsupportedLanguageError,
@@ -117,9 +122,11 @@ async def create_transcription(
             ),
         )
 
-    suffix = Path(
-        audio.filename or config.transcription.default_upload_filename
-    ).suffix or Path(config.transcription.default_upload_filename).suffix or ".webm"
+    suffix = (
+        Path(audio.filename or config.transcription.default_upload_filename).suffix
+        or Path(config.transcription.default_upload_filename).suffix
+        or ".webm"
+    )
     temp_path: Path | None = None
     max_upload_size_bytes = (
         config.transcription.max_upload_size_mb * _BYTES_PER_MEGABYTE
@@ -168,4 +175,13 @@ async def create_transcription(
         language=result.language,
         model_size=result.model_size,
         duration_seconds=result.duration_seconds,
+        segments=[
+            TranscriptionSegmentResponse(
+                speaker=segment.speaker,
+                text=segment.text,
+                start_time=segment.start_time,
+                end_time=segment.end_time,
+            )
+            for segment in (result.segments or [])
+        ],
     )

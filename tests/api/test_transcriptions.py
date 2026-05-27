@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.config import SupportedLanguage, SupportedModelSize, load_config
 from app.main import app
 from app.services.transcription import TranscriptionError, TranscriptionResult
-from tests.stubs import StubService
+from tests.stubs import DiarizingStubService, StubService
 
 
 class FailingService:
@@ -44,6 +44,41 @@ def test_post_transcriptions_returns_transcript(client: TestClient) -> None:
         "language": "de",
         "model_size": "small",
         "duration_seconds": 1.2,
+        "segments": [],
+    }
+
+
+def test_post_transcriptions_returns_diarized_segments() -> None:
+    app.state.config = load_config(Path("config.yaml"))
+    app.state.service = DiarizingStubService()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/transcriptions",
+        data={"language": "de", "model_size": "vibevoice-7b"},
+        files={"audio": ("sample.webm", b"audio", "audio/webm")},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "transcript": "Speaker 1: Hallo Welt\nSpeaker 2: Guten Tag",
+        "language": "de",
+        "model_size": "vibevoice-7b",
+        "duration_seconds": 2.4,
+        "segments": [
+            {
+                "speaker": "1",
+                "start_time": 0.0,
+                "end_time": 1.1,
+                "text": "Hallo Welt",
+            },
+            {
+                "speaker": "2",
+                "start_time": 1.1,
+                "end_time": 2.4,
+                "text": "Guten Tag",
+            },
+        ],
     }
 
 

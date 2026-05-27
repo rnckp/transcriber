@@ -1,6 +1,6 @@
 # Transcriber
 
-**Local browser-based transcription app for Apple Silicon Macs.** It runs a FastAPI backend with a small vanilla frontend and uses `mlx-whisper` for on-device speech-to-text.
+**Local browser-based transcription app for Apple Silicon Macs.** It runs a FastAPI backend with a small vanilla frontend and uses `mlx-whisper` for on-device speech-to-text, with an optional Microsoft VibeVoice ASR 7B backend for diarized transcripts.
 
 [![Python](https://img.shields.io/badge/python-v3.12+-blue.svg)](https://github.com/rnckp/transcriber)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -16,7 +16,8 @@
 
 - Runs locally on Apple Silicon.
 - Browser-based microphone recording and local audio file processing.
-- Local transcription with configurable language and MLX Whisper model size.
+- Local transcription with configurable language and model selection.
+- Optional Microsoft VibeVoice ASR 7B transcription with speaker diarization and segment timestamps.
 - Transcript metadata in the UI, including language, model, and detected duration.
 - Copy-to-clipboard and save-as-`.txt` actions for completed transcripts.
 - Configurable host, port, cache directory, upload limits, and browser status strings.
@@ -54,10 +55,11 @@ Key options:
 - `transcription.upload_chunk_size_mb` controls temp-file streaming chunk size while uploads are staged.
 - `transcription.default_upload_filename` defines the fallback filename used for browser recordings.
 - `transcription.supported_languages` defines the language picker and backend validation.
-- `transcription.supported_model_sizes` defines the available MLX Whisper models.
+- `transcription.supported_model_sizes` defines the available models and backend for each option.
+- `transcription.vibevoice_repo_path` points to the local VibeVoice checkout used by the VibeVoice ASR backend.
 - `ui.*` tunes browser-side status text, timer labels, and button copy without editing JavaScript.
 
-The default configuration includes German and English, a 100 MB upload limit, and `tiny`, `base`, `small`, `medium`, and `large` model options.
+The default configuration includes German and English, a 100 MB upload limit, and `tiny`, `base`, `small`, `medium`, `large`, and `vibevoice-7b` model options.
 
 ## Model Caching
 
@@ -81,6 +83,7 @@ Successful responses return JSON with:
 - `language`
 - `model_size`
 - `duration_seconds`
+- `segments`, populated for diarizing models such as `vibevoice-7b`
 
 Error responses use a consistent shape:
 

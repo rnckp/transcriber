@@ -5,6 +5,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 LoggingLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+TranscriptionBackend = Literal["mlx_whisper", "vibevoice_asr"]
 
 
 class SupportedLanguage(BaseModel):
@@ -16,6 +17,7 @@ class SupportedModelSize(BaseModel):
     id: str
     label: str
     model_name: str
+    backend: TranscriptionBackend = "mlx_whisper"
 
 
 class ServerConfig(BaseModel):
@@ -38,6 +40,11 @@ class TranscriptionConfig(BaseModel):
     default_upload_filename: str = "recording.webm"
     supported_languages: list[SupportedLanguage] = Field(default_factory=list)
     supported_model_sizes: list[SupportedModelSize] = Field(default_factory=list)
+    vibevoice_repo_path: Path | None = None
+    vibevoice_device: str = "auto"
+    vibevoice_dtype: str = "auto"
+    vibevoice_attention: str = "auto"
+    vibevoice_max_new_tokens: int = 32768
 
     @field_validator("max_upload_size_mb")
     @classmethod
@@ -58,7 +65,9 @@ class TranscriptionConfig(BaseModel):
     @model_validator(mode="after")
     def validate_upload_limits(self) -> "TranscriptionConfig":
         if self.upload_chunk_size_mb > self.max_upload_size_mb:
-            msg = "upload_chunk_size_mb must be less than or equal to max_upload_size_mb"
+            msg = (
+                "upload_chunk_size_mb must be less than or equal to max_upload_size_mb"
+            )
             raise ValueError(msg)
         return self
 
@@ -70,6 +79,27 @@ class TranscriptionConfig(BaseModel):
             msg = "default_upload_filename must not be empty"
             raise ValueError(msg)
         return cleaned
+
+    @field_validator(
+        "vibevoice_device",
+        "vibevoice_dtype",
+        "vibevoice_attention",
+    )
+    @classmethod
+    def validate_vibevoice_setting(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            msg = "VibeVoice settings must not be empty"
+            raise ValueError(msg)
+        return cleaned
+
+    @field_validator("vibevoice_max_new_tokens")
+    @classmethod
+    def validate_vibevoice_max_new_tokens(cls, value: int) -> int:
+        if value <= 0:
+            msg = "vibevoice_max_new_tokens must be greater than 0"
+            raise ValueError(msg)
+        return value
 
 
 class LoggingConfig(BaseModel):
@@ -89,9 +119,7 @@ class UiConfig(BaseModel):
     processing_network_error_message: str = (
         "Processing failed before the server returned a response."
     )
-    microphone_blocked_message: str = (
-        "Microphone access is blocked. Allow access in your browser settings and try again."
-    )
+    microphone_blocked_message: str = "Microphone access is blocked. Allow access in your browser settings and try again."
     recording_start_error_message: str = (
         "Recording could not start. Check your microphone and try again."
     )
@@ -99,7 +127,9 @@ class UiConfig(BaseModel):
         "Clipboard access is unavailable in this browser."
     )
     save_success_message: str = "Saved transcript as {filename}."
-    save_unavailable_message: str = "Transcript download is unavailable in this browser."
+    save_unavailable_message: str = (
+        "Transcript download is unavailable in this browser."
+    )
     audio_file_button_label: str = "Choose Audio File"
     audio_file_empty_label: str = "No file selected"
     copy_button_label: str = "Copy"

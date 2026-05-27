@@ -33,6 +33,11 @@ transcription:
     - id: "large"
       label: "Large"
       model_name: "mlx-community/whisper-large-v3-turbo"
+    - id: "vibevoice-7b"
+      label: "VibeVoice ASR 7B"
+      model_name: "microsoft/VibeVoice-ASR"
+      backend: "vibevoice_asr"
+  vibevoice_repo_path: "../../_ GitHub generell/VibeVoice"
 logging:
   level: "INFO"
 ui:
@@ -58,7 +63,13 @@ ui:
     assert [model.id for model in config.transcription.supported_model_sizes] == [
         "tiny",
         "large",
+        "vibevoice-7b",
     ]
+    assert config.transcription.supported_model_sizes[0].backend == "mlx_whisper"
+    assert config.transcription.supported_model_sizes[2].backend == "vibevoice_asr"
+    assert config.transcription.vibevoice_repo_path == Path(
+        "../../_ GitHub generell/VibeVoice"
+    )
     assert config.transcription.upload_chunk_size_mb == 2
     assert config.transcription.default_upload_filename == "capture.webm"
     assert config.ui.copy_feedback_ms == 1200
@@ -89,7 +100,10 @@ logging:
         encoding="utf-8",
     )
 
-    with pytest.raises(ValidationError, match="upload_chunk_size_mb must be less than or equal to max_upload_size_mb"):
+    with pytest.raises(
+        ValidationError,
+        match="upload_chunk_size_mb must be less than or equal to max_upload_size_mb",
+    ):
         load_config(config_file)
 
 

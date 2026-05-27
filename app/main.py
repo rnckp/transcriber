@@ -12,6 +12,8 @@ from app.config import load_config
 from app.logging import configure_logging
 from app.models import ApiError, ErrorResponse
 from app.services.mlx_whisper import MlxWhisperService
+from app.services.transcription_router import TranscriptionRouterService
+from app.services.vibevoice_asr import VibeVoiceASRService
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -20,7 +22,13 @@ INDEX_TEMPLATE = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
 
 config = load_config(CONFIG_PATH)
 configure_logging(config.logging.level)
-service = MlxWhisperService(config.transcription)
+service = TranscriptionRouterService(
+    config=config.transcription,
+    backends={
+        "mlx_whisper": MlxWhisperService(config.transcription),
+        "vibevoice_asr": VibeVoiceASRService(config.transcription),
+    },
+)
 app = FastAPI(title="Transcriber")
 app.state.config = config
 app.state.service = service

@@ -43,7 +43,9 @@ def test_get_model_reuses_cached_instance(tmp_path: Path) -> None:
     }
 
 
-def test_get_model_uses_existing_local_directory_without_hub_call(tmp_path: Path) -> None:
+def test_get_model_uses_existing_local_directory_without_hub_call(
+    tmp_path: Path,
+) -> None:
     config = TranscriptionConfig(
         cache_dir=tmp_path / "models",
         supported_languages=[],
@@ -61,7 +63,9 @@ def test_get_model_uses_existing_local_directory_without_hub_call(tmp_path: Path
     (expected_model_path / "config.json").write_text("{}", encoding="utf-8")
     (expected_model_path / "weights.safetensors").write_bytes(b"weights")
 
-    with patch("app.services.mlx_whisper.load_models.snapshot_download") as mocked_download:
+    with patch(
+        "app.services.mlx_whisper.load_models.snapshot_download"
+    ) as mocked_download:
         model_path = service._get_or_load_model("small")
 
     assert model_path == expected_model_path

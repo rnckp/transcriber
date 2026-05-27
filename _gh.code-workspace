@@ -2,6 +2,9 @@
     "folders": [
         {
             "path": "."
+        },
+        {
+            "path": "../../_ GitHub generell/VibeVoice"
         }
     ],
     "settings": {}

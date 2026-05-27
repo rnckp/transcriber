@@ -218,6 +218,34 @@ function buildTranscriptFilename() {
   return `transcription-${language}-${modelSize}-${timestamp}.txt`;
 }
 
+function formatSegmentTime(value) {
+  if (value == null) {
+    return null;
+  }
+
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds)) {
+    return null;
+  }
+
+  return `${seconds.toFixed(2)}s`;
+}
+
+function formatDiarizedTranscript(payload) {
+  if (!Array.isArray(payload.segments) || payload.segments.length === 0) {
+    return payload.transcript ?? "";
+  }
+
+  return payload.segments
+    .map((segment) => {
+      const startTime = formatSegmentTime(segment.start_time);
+      const endTime = formatSegmentTime(segment.end_time);
+      const timing = startTime && endTime ? `[${startTime} - ${endTime}] ` : "";
+      return `${timing}Speaker ${segment.speaker}: ${segment.text}`;
+    })
+    .join("\n");
+}
+
 function updateTimer() {
   if (!state.startedAt) {
     elements.timer.textContent = "00:00";
@@ -304,7 +332,7 @@ async function submitAudio(audio, filename, statusMessage) {
   state.isRecording = false;
   state.isProcessing = false;
   state.lastResult = payload;
-  elements.transcript.value = payload.transcript;
+  elements.transcript.value = formatDiarizedTranscript(payload);
   setResultMeta(payload);
   restoreInteractiveState(APP_CONFIG.completionStatusMessage, APP_CONFIG.timerReadyLabel);
 }
