@@ -6,10 +6,16 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+import uvicorn
 
-from app.api.transcriptions import router as transcriptions_router
+from app.api.transcriptions import (
+    BYTES_PER_MEGABYTE,
+    build_upload_too_large_message,
+    router as transcriptions_router,
+)
 from app.config import load_config
 from app.logging import configure_logging
+from app.middleware import UploadSizeLimitMiddleware
 from app.models import ApiError, ErrorResponse
 from app.services.mlx_whisper import MlxWhisperService
 from app.services.transcription_router import TranscriptionRouterService
@@ -32,6 +38,16 @@ service = TranscriptionRouterService(
 app = FastAPI(title="Transcriber")
 app.state.config = config
 app.state.service = service
+app.add_middleware(
+    UploadSizeLimitMiddleware,
+    max_upload_size_bytes=lambda scope: (
+        scope["app"].state.config.transcription.max_upload_size_mb * BYTES_PER_MEGABYTE
+    ),
+    paths={"/api/transcriptions"},
+    error_message_factory=lambda scope: build_upload_too_large_message(
+        scope["app"].state.config.transcription.max_upload_size_mb
+    ),
+)
 
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False), name="static")
@@ -67,6 +83,16 @@ async def index(request: Request) -> HTMLResponse:
     ui_config = json.dumps(
         {
             "copyFeedbackMs": runtime_config.ui.copy_feedback_ms,
+            "progressModelFactors": runtime_config.ui.progress_model_factors,
+            "progressDefaultModelFactor": runtime_config.ui.progress_default_model_factor,
+            "progressDefaultAudioSeconds": runtime_config.ui.progress_default_audio_seconds,
+            "progressMinProcessingSeconds": runtime_config.ui.progress_min_processing_seconds,
+            "progressMetadataTimeoutMs": runtime_config.ui.progress_metadata_timeout_ms,
+            "progressUpdateIntervalMs": runtime_config.ui.progress_update_interval_ms,
+            "progressUploadFraction": runtime_config.ui.progress_upload_fraction,
+            "progressTranscriptionFraction": runtime_config.ui.progress_transcription_fraction,
+            "progressMaxTranscriptionFraction": runtime_config.ui.progress_max_transcription_fraction,
+            "progressMinVisiblePercent": runtime_config.ui.progress_min_visible_percent,
             "processingStatusMessage": runtime_config.ui.processing_status_message,
             "uploadStatusMessage": runtime_config.ui.upload_status_message,
             "uploadReadyStatusMessage": runtime_config.ui.upload_ready_status_message,
@@ -91,6 +117,11 @@ async def index(request: Request) -> HTMLResponse:
             "timerReadyLabel": runtime_config.ui.timer_ready_label,
             "timerRecordingLabel": runtime_config.ui.timer_recording_label,
             "timerProcessingLabel": runtime_config.ui.timer_processing_label,
+            "progressWaitingMessage": runtime_config.ui.progress_waiting_message,
+            "progressPreparingMessage": runtime_config.ui.progress_preparing_message,
+            "progressCompleteMessage": runtime_config.ui.progress_complete_message,
+            "progressTranscribingMessage": runtime_config.ui.progress_transcribing_message,
+            "progressUploadingMessage": runtime_config.ui.progress_uploading_message,
             "defaultUploadFilename": runtime_config.transcription.default_upload_filename,
         }
     ).replace("</", "<\\/")
@@ -111,3 +142,15 @@ async def index(request: Request) -> HTMLResponse:
     html = html.replace("<!--MODEL_OPTIONS-->", model_options)
     html = html.replace('"__APP_CONFIG__"', ui_config)
     return HTMLResponse(html)
+
+
+def main() -> None:
+    uvicorn.run(
+        "app.main:app",
+        host=config.server.host,
+        port=config.server.port,
+    )
+
+
+if __name__ == "__main__":
+    main()

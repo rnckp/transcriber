@@ -24,7 +24,7 @@ class VibeVoiceASRService:
         self._supported_languages = {
             language.code for language in config.supported_languages
         }
-        self._backend: Any | None = None
+        self._backends: dict[str, Any] = {}
         self._backend_lock = Lock()
 
     def _resolve_repo_path(self) -> Path:
@@ -114,13 +114,16 @@ class VibeVoiceASRService:
         if model is None:
             raise UnsupportedModelSizeError(f"Unsupported model size: {model_size}")
 
-        if self._backend is not None:
-            return self._backend
+        backend = self._backends.get(model_size)
+        if backend is not None:
+            return backend
 
         with self._backend_lock:
-            if self._backend is None:
-                self._backend = self._load_backend(model.model_name)
-            return self._backend
+            backend = self._backends.get(model_size)
+            if backend is None:
+                backend = self._load_backend(model.model_name)
+                self._backends[model_size] = backend
+            return backend
 
     def _coerce_time(self, value: object) -> float | None:
         if isinstance(value, int | float):
@@ -177,11 +180,11 @@ class VibeVoiceASRService:
             result = backend.transcribe(
                 audio_path=str(audio_path),
                 max_new_tokens=self._config.vibevoice_max_new_tokens,
-                temperature=0.0,
-                top_p=1.0,
-                do_sample=False,
-                num_beams=1,
-                repetition_penalty=1.0,
+                temperature=self._config.vibevoice_temperature,
+                top_p=self._config.vibevoice_top_p,
+                do_sample=self._config.vibevoice_do_sample,
+                num_beams=self._config.vibevoice_num_beams,
+                repetition_penalty=self._config.vibevoice_repetition_penalty,
             )
             segments = self._normalize_segments(result.get("segments"))
             transcript = "\n\n".join(

@@ -12,14 +12,16 @@ _LOG_LEVELS: dict[str, int] = {
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        return json.dumps(
-            {
-                "level": record.levelname,
-                "message": record.getMessage(),
-                "logger": record.name,
-                "module": record.module,
-            }
-        )
+        payload = {
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
+            "module": record.module,
+            "timestamp": self.formatTime(record, self.datefmt),
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload)
 
 
 def configure_logging(level: str = "INFO") -> None:

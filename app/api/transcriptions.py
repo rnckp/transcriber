@@ -1,3 +1,4 @@
+import logging
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -19,7 +20,8 @@ from app.services.transcription import (
 )
 
 router = APIRouter(prefix="/api/transcriptions", tags=["transcriptions"])
-_BYTES_PER_MEGABYTE = 1024 * 1024
+logger = logging.getLogger(__name__)
+BYTES_PER_MEGABYTE = 1024 * 1024
 
 
 class UploadTooLargeError(Exception):
@@ -47,6 +49,10 @@ def _build_supported_choice_message(labels: list[str], fallback: str) -> str:
     if len(labels) == 2:
         return f"Choose {labels[0]} or {labels[1]}."
     return f"Choose {', '.join(labels[:-1])}, or {labels[-1]}."
+
+
+def build_upload_too_large_message(max_upload_size_mb: int) -> str:
+    return f"Upload exceeds the configured {max_upload_size_mb} MB limit."
 
 
 async def _write_upload_to_temp_file(
@@ -128,10 +134,8 @@ async def create_transcription(
         or ".webm"
     )
     temp_path: Path | None = None
-    max_upload_size_bytes = (
-        config.transcription.max_upload_size_mb * _BYTES_PER_MEGABYTE
-    )
-    chunk_size_bytes = config.transcription.upload_chunk_size_mb * _BYTES_PER_MEGABYTE
+    max_upload_size_bytes = config.transcription.max_upload_size_mb * BYTES_PER_MEGABYTE
+    chunk_size_bytes = config.transcription.upload_chunk_size_mb * BYTES_PER_MEGABYTE
 
     try:
         temp_path = await _write_upload_to_temp_file(
@@ -149,9 +153,8 @@ async def create_transcription(
     except UploadTooLargeError:
         return _error_response(
             code="upload_too_large",
-            message=(
-                "Upload exceeds the configured "
-                f"{config.transcription.max_upload_size_mb} MB limit."
+            message=build_upload_too_large_message(
+                config.transcription.max_upload_size_mb
             ),
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
         )
@@ -159,10 +162,14 @@ async def create_transcription(
         return _error_response("unsupported_language", str(exc))
     except UnsupportedModelSizeError as exc:
         return _error_response("unsupported_model_size", str(exc))
-    except TranscriptionError as exc:
+    except TranscriptionError:
+        logger.exception(
+            "Transcription failed",
+            extra={"language": language, "model_size": model_size},
+        )
         return _error_response(
             code="transcription_failed",
-            message=str(exc),
+            message="Transcription failed. Check server logs for details.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
     finally:

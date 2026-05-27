@@ -153,7 +153,9 @@ function restorePreference(key, fallbackValue) {
 function resolveSelectPreference(element, storageKey) {
   const fallbackValue = element.value;
   const storedValue = restorePreference(storageKey, fallbackValue);
-  const hasOption = Array.from(element.options).some((option) => option.value === storedValue);
+  const hasOption = Array.from(element.options).some(
+    (option) => option.value === storedValue,
+  );
 
   if (!hasOption) {
     persistPreference(storageKey, fallbackValue);
@@ -191,7 +193,7 @@ function formatRemainingTime(totalSeconds) {
 function setProgress(value, label) {
   const progress = Math.min(1, Math.max(0, value));
   const percent = Math.round(progress * 100);
-  const visiblePercent = Math.max(4, percent);
+  const visiblePercent = Math.max(APP_CONFIG.progressMinVisiblePercent, percent);
 
   elements.processingProgress.hidden = false;
   elements.progressFill.style.width = `${visiblePercent}%`;
@@ -205,22 +207,20 @@ function resetProgress() {
   state.progressStartedAt = null;
   state.estimatedProcessingSeconds = null;
   elements.processingProgress.hidden = false;
-  setProgress(0, "Waiting for audio.");
+  setProgress(0, APP_CONFIG.progressWaitingMessage);
 }
 
 function estimateProcessingSeconds(audioSeconds, modelSize) {
-  const modelFactors = {
-    tiny: 0.35,
-    base: 0.5,
-    small: 0.75,
-    medium: 1.1,
-    large: 1.6,
-    "vibevoice-7b": 2.6,
-  };
-  const safeAudioSeconds = Number.isFinite(audioSeconds) && audioSeconds > 0 ? audioSeconds : 30;
-  const factor = modelFactors[modelSize] ?? 1;
+  const safeAudioSeconds = Number.isFinite(audioSeconds) && audioSeconds > 0
+    ? audioSeconds
+    : APP_CONFIG.progressDefaultAudioSeconds;
+  const factor = APP_CONFIG.progressModelFactors[modelSize]
+    ?? APP_CONFIG.progressDefaultModelFactor;
 
-  return Math.max(8, Math.ceil(safeAudioSeconds * factor));
+  return Math.max(
+    APP_CONFIG.progressMinProcessingSeconds,
+    Math.ceil(safeAudioSeconds * factor),
+  );
 }
 
 function estimateAudioSeconds(audio) {
@@ -243,7 +243,10 @@ function estimateAudioSeconds(audio) {
       resolve(value);
     };
 
-    const timeoutId = window.setTimeout(() => finish(null), 1500);
+    const timeoutId = window.setTimeout(
+      () => finish(null),
+      APP_CONFIG.progressMetadataTimeoutMs,
+    );
 
     audioElement.preload = "metadata";
     audioElement.onloadedmetadata = () => {
@@ -261,18 +264,25 @@ function startEstimatedProcessingProgress(estimatedSeconds) {
 
   const updateProgress = () => {
     const elapsedSeconds = (Date.now() - state.progressStartedAt) / 1000;
-    const phaseProgress = Math.min(0.95, elapsedSeconds / estimatedSeconds);
-    const progress = 0.2 + phaseProgress * 0.75;
+    const phaseProgress = Math.min(
+      APP_CONFIG.progressMaxTranscriptionFraction,
+      elapsedSeconds / estimatedSeconds,
+    );
+    const progress = APP_CONFIG.progressUploadFraction
+      + phaseProgress * APP_CONFIG.progressTranscriptionFraction;
     const remainingSeconds = Math.max(0, estimatedSeconds - elapsedSeconds);
 
     setProgress(
       progress,
-      `Transcribing audio locally, about ${formatRemainingTime(remainingSeconds)} time left`,
+      APP_CONFIG.progressTranscribingMessage.replace(
+        "{remaining}",
+        formatRemainingTime(remainingSeconds),
+      ),
     );
   };
 
   updateProgress();
-  state.progressTimerId = window.setInterval(updateProgress, 1000);
+  state.progressTimerId = window.setInterval(updateProgress, APP_CONFIG.progressUpdateIntervalMs);
 }
 
 function restoreInteractiveState(
@@ -382,7 +392,7 @@ function setProcessingState(statusMessage) {
   syncResultActions();
   setTimerState(APP_CONFIG.timerProcessingLabel, "busy");
   setStatus(statusMessage);
-  setProgress(0, "Preparing audio...");
+  setProgress(0, APP_CONFIG.progressPreparingMessage);
 }
 
 async function submitAudio(audio, filename, statusMessage, recordedDurationSeconds = null) {
@@ -408,8 +418,8 @@ async function submitAudio(audio, filename, statusMessage, recordedDurationSecon
 
         setStatus(`${statusMessage} ${percent}`);
         setProgress(
-          uploadProgress * 0.2,
-          `Uploading audio, ${percent} complete`,
+          uploadProgress * APP_CONFIG.progressUploadFraction,
+          APP_CONFIG.progressUploadingMessage.replace("{percent}", percent),
         );
       }
     };
@@ -442,7 +452,7 @@ async function submitAudio(audio, filename, statusMessage, recordedDurationSecon
   state.lastResult = payload;
   elements.transcript.value = formatDiarizedTranscript(payload);
   setResultMeta(payload);
-  setProgress(1, "Complete");
+  setProgress(1, APP_CONFIG.progressCompleteMessage);
   clearProgressTimer();
   restoreInteractiveState(APP_CONFIG.completionStatusMessage, APP_CONFIG.timerReadyLabel);
 }

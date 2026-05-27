@@ -14,7 +14,7 @@ from app.services.transcription import UnsupportedLanguageError
 def test_get_model_reuses_cached_instance(tmp_path: Path) -> None:
     config = TranscriptionConfig(
         cache_dir=tmp_path / "models",
-        supported_languages=[],
+        supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
             SupportedModelSize(
                 id="small",
@@ -48,7 +48,7 @@ def test_get_model_uses_existing_local_directory_without_hub_call(
 ) -> None:
     config = TranscriptionConfig(
         cache_dir=tmp_path / "models",
-        supported_languages=[],
+        supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
             SupportedModelSize(
                 id="small",
@@ -75,7 +75,7 @@ def test_get_model_uses_existing_local_directory_without_hub_call(
 def test_get_model_normalizes_legacy_repo_id(tmp_path: Path) -> None:
     config = TranscriptionConfig(
         cache_dir=tmp_path / "models",
-        supported_languages=[],
+        supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
             SupportedModelSize(
                 id="small",
@@ -234,7 +234,7 @@ def test_transcribe_rejects_unsupported_language(tmp_path: Path) -> None:
 def test_get_model_loads_once_under_concurrency(tmp_path: Path) -> None:
     config = TranscriptionConfig(
         cache_dir=tmp_path / "models",
-        supported_languages=[],
+        supported_languages=[SupportedLanguage(code="de", label="German")],
         supported_model_sizes=[
             SupportedModelSize(
                 id="small",

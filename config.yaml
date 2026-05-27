@@ -36,10 +36,31 @@ transcription:
   vibevoice_dtype: "auto"
   vibevoice_attention: "auto"
   vibevoice_max_new_tokens: 4096
+  vibevoice_temperature: 0.0
+  vibevoice_top_p: 1.0
+  vibevoice_do_sample: false
+  vibevoice_num_beams: 1
+  vibevoice_repetition_penalty: 1.0
 logging:
   level: "INFO"
 ui:
   copy_feedback_ms: 1400
+  progress_model_factors:
+    tiny: 0.35
+    base: 0.5
+    small: 0.75
+    medium: 1.1
+    large: 1.6
+    vibevoice-7b: 2.6
+  progress_default_model_factor: 1.0
+  progress_default_audio_seconds: 30.0
+  progress_min_processing_seconds: 8.0
+  progress_metadata_timeout_ms: 1500
+  progress_update_interval_ms: 1000
+  progress_upload_fraction: 0.2
+  progress_transcription_fraction: 0.75
+  progress_max_transcription_fraction: 0.95
+  progress_min_visible_percent: 4
   processing_status_message: "Transcribing audio locally..."
   upload_status_message: "Processing audio file locally..."
   upload_ready_status_message: "Ready to process {filename}."
@@ -64,3 +85,8 @@ ui:
   timer_ready_label: "Ready"
   timer_recording_label: "Recording"
   timer_processing_label: "Processing"
+  progress_waiting_message: "Waiting for audio."
+  progress_preparing_message: "Preparing audio..."
+  progress_complete_message: "Complete"
+  progress_transcribing_message: "Transcribing audio locally, about {remaining} time left"
+  progress_uploading_message: "Uploading audio, {percent} complete"

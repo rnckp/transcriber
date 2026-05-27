@@ -10,10 +10,16 @@ from tests.stubs import DiarizingStubService, StubService
 
 
 class FailingService:
+    def __init__(
+        self,
+        message: str = "Failed to transcribe audio: backend unavailable",
+    ) -> None:
+        self.message = message
+
     def transcribe(
         self, audio_path: Path, language: str, model_size: str
     ) -> TranscriptionResult:
-        raise TranscriptionError("Failed to transcribe audio: backend unavailable")
+        raise TranscriptionError(self.message)
 
 
 def test_post_transcriptions_rejects_unknown_model_size() -> None:
@@ -145,6 +151,30 @@ def test_post_transcriptions_rejects_oversized_upload() -> None:
     assert stub_service.calls == []
 
 
+def test_post_transcriptions_rejects_oversized_body_before_route_validation() -> None:
+    config = load_config(Path("config.yaml"))
+    config.transcription.max_upload_size_mb = 1
+    app.state.config = config
+    stub_service = StubService()
+    app.state.service = stub_service
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/transcriptions",
+        content=b"a" * (1024 * 1024 + 1),
+        headers={"content-type": "application/octet-stream"},
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {
+        "error": {
+            "code": "upload_too_large",
+            "message": "Upload exceeds the configured 1 MB limit.",
+        }
+    }
+    assert stub_service.calls == []
+
+
 def test_post_transcriptions_returns_structured_error_for_transcription_failures() -> (
     None
 ):
@@ -162,9 +192,31 @@ def test_post_transcriptions_returns_structured_error_for_transcription_failures
     assert response.json() == {
         "error": {
             "code": "transcription_failed",
-            "message": "Failed to transcribe audio: backend unavailable",
+            "message": "Transcription failed. Check server logs for details.",
         }
     }
+
+
+def test_post_transcriptions_logs_transcription_failure_without_leaking_to_client() -> (
+    None
+):
+    app.state.config = load_config(Path("config.yaml"))
+    app.state.service = FailingService("secret path /private/tmp/audio.webm")
+    client = TestClient(app)
+
+    with patch("app.api.transcriptions.logger.exception") as mocked_log:
+        response = client.post(
+            "/api/transcriptions",
+            data={"language": "de", "model_size": "small"},
+            files={"audio": ("sample.webm", b"audio", "audio/webm")},
+        )
+
+    assert response.status_code == 500
+    assert "secret path" not in response.text
+    assert response.json()["error"]["message"] == (
+        "Transcription failed. Check server logs for details."
+    )
+    mocked_log.assert_called_once()
 
 
 def test_post_transcriptions_returns_plain_language_error_for_missing_audio(
@@ -245,6 +297,8 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
     assert "uploadReadyStatusMessage" in response.text
     assert "audioFileButtonLabel" in response.text
     assert "audioFileEmptyLabel" in response.text
+    assert "progressModelFactors" in response.text
+    assert "progressMetadataTimeoutMs" in response.text
     assert "<\\/script><script>window.injected=true<\\/script>" in response.text
     assert "saveSuccessMessage" in response.text
     assert 'id="audio-file"' in response.text
@@ -269,5 +323,5 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     assert "formatPercent" in app_js
     assert "estimateProcessingSeconds" in app_js
     assert "setProgress" in app_js
-    assert "time left" in app_js
-    assert "Math.max(4, percent)" in app_js
+    assert "progressTranscribingMessage" in app_js
+    assert "progressMinVisiblePercent" in app_js
