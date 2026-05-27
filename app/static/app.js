@@ -201,10 +201,10 @@ function resetProgress() {
   clearProgressTimer();
   state.progressStartedAt = null;
   state.estimatedProcessingSeconds = null;
-  elements.processingProgress.hidden = true;
+  elements.processingProgress.hidden = false;
   elements.progressFill.style.width = "0%";
   elements.progressTrack.setAttribute("aria-valuenow", "0");
-  elements.progressEta.textContent = "Estimating time left...";
+  elements.progressEta.textContent = "Waiting for audio.";
 }
 
 function estimateProcessingSeconds(audioSeconds, modelSize) {

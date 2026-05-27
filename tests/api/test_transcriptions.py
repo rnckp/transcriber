@@ -261,6 +261,7 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     assert 'id="processing-progress"' in index_html
     assert 'id="progress-fill"' in index_html
     assert 'id="progress-eta"' in index_html
+    assert 'id="processing-progress" hidden' not in index_html
     assert "XMLHttpRequest" in app_js
     assert ".upload.onprogress" in app_js
     assert "formatPercent" in app_js
