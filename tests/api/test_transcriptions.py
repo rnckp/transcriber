@@ -255,8 +255,15 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
 
 
 def test_static_frontend_reports_file_processing_progress() -> None:
+    index_html = Path("app/static/index.html").read_text(encoding="utf-8")
     app_js = Path("app/static/app.js").read_text(encoding="utf-8")
 
+    assert 'id="processing-progress"' in index_html
+    assert 'id="progress-fill"' in index_html
+    assert 'id="progress-eta"' in index_html
     assert "XMLHttpRequest" in app_js
     assert ".upload.onprogress" in app_js
     assert "formatPercent" in app_js
+    assert "estimateProcessingSeconds" in app_js
+    assert "setProgress" in app_js
+    assert "time left" in app_js

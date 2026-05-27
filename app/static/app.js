@@ -3,6 +3,9 @@ const state = {
   chunks: [],
   stream: null,
   timerId: null,
+  progressTimerId: null,
+  progressStartedAt: null,
+  estimatedProcessingSeconds: null,
   startedAt: null,
   isRecording: false,
   isProcessing: false,
@@ -37,6 +40,10 @@ const elements = {
   resultLanguage: document.querySelector("#result-language"),
   resultModel: document.querySelector("#result-model"),
   resultDuration: document.querySelector("#result-duration"),
+  processingProgress: document.querySelector("#processing-progress"),
+  progressFill: document.querySelector("#progress-fill"),
+  progressEta: document.querySelector("#progress-eta"),
+  progressTrack: document.querySelector(".progress-track"),
 };
 
 function setStatus(message) {
@@ -162,6 +169,111 @@ function clearTimer() {
   }
 }
 
+function clearProgressTimer() {
+  if (state.progressTimerId !== null) {
+    window.clearInterval(state.progressTimerId);
+    state.progressTimerId = null;
+  }
+}
+
+function formatRemainingTime(totalSeconds) {
+  const seconds = Math.max(0, Math.ceil(totalSeconds));
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`;
+}
+
+function setProgress(value, label) {
+  const progress = Math.min(1, Math.max(0, value));
+  const percent = Math.round(progress * 100);
+
+  elements.processingProgress.hidden = false;
+  elements.progressFill.style.width = `${percent}%`;
+  elements.progressTrack.setAttribute("aria-valuenow", String(percent));
+  elements.progressEta.textContent = label;
+}
+
+function resetProgress() {
+  clearProgressTimer();
+  state.progressStartedAt = null;
+  state.estimatedProcessingSeconds = null;
+  elements.processingProgress.hidden = true;
+  elements.progressFill.style.width = "0%";
+  elements.progressTrack.setAttribute("aria-valuenow", "0");
+  elements.progressEta.textContent = "Estimating time left...";
+}
+
+function estimateProcessingSeconds(audioSeconds, modelSize) {
+  const modelFactors = {
+    tiny: 0.35,
+    base: 0.5,
+    small: 0.75,
+    medium: 1.1,
+    large: 1.6,
+    "vibevoice-7b": 2.6,
+  };
+  const safeAudioSeconds = Number.isFinite(audioSeconds) && audioSeconds > 0 ? audioSeconds : 30;
+  const factor = modelFactors[modelSize] ?? 1;
+
+  return Math.max(8, Math.ceil(safeAudioSeconds * factor));
+}
+
+function estimateAudioSeconds(audio) {
+  if (!(audio instanceof Blob) || audio.size === 0) {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const audioElement = document.createElement("audio");
+    const url = window.URL.createObjectURL(audio);
+    let resolved = false;
+
+    const finish = (value) => {
+      if (resolved) {
+        return;
+      }
+      resolved = true;
+      window.clearTimeout(timeoutId);
+      window.URL.revokeObjectURL(url);
+      resolve(value);
+    };
+
+    const timeoutId = window.setTimeout(() => finish(null), 1500);
+
+    audioElement.preload = "metadata";
+    audioElement.onloadedmetadata = () => {
+      finish(Number.isFinite(audioElement.duration) ? audioElement.duration : null);
+    };
+    audioElement.onerror = () => finish(null);
+    audioElement.src = url;
+  });
+}
+
+function startEstimatedProcessingProgress(estimatedSeconds) {
+  clearProgressTimer();
+  state.progressStartedAt = Date.now();
+  state.estimatedProcessingSeconds = estimatedSeconds;
+
+  const updateProgress = () => {
+    const elapsedSeconds = (Date.now() - state.progressStartedAt) / 1000;
+    const phaseProgress = Math.min(0.95, elapsedSeconds / estimatedSeconds);
+    const progress = 0.2 + phaseProgress * 0.75;
+    const remainingSeconds = Math.max(0, estimatedSeconds - elapsedSeconds);
+
+    setProgress(
+      progress,
+      `Transcribing audio locally, about ${formatRemainingTime(remainingSeconds)} time left`,
+    );
+  };
+
+  updateProgress();
+  state.progressTimerId = window.setInterval(updateProgress, 1000);
+}
+
 function restoreInteractiveState(
   statusMessage,
   timerLabel,
@@ -262,6 +374,7 @@ function resetUi() {
   }
 
   clearTimer();
+  resetProgress();
   clearActiveRecorder({ cancelPendingStop: true });
   state.chunks = [];
   state.startedAt = null;
@@ -286,9 +399,13 @@ function setProcessingState(statusMessage) {
   syncResultActions();
   setTimerState(APP_CONFIG.timerProcessingLabel, "busy");
   setStatus(statusMessage);
+  setProgress(0, "Preparing audio...");
 }
 
-async function submitAudio(audio, filename, statusMessage) {
+async function submitAudio(audio, filename, statusMessage, recordedDurationSeconds = null) {
+  const audioSeconds = recordedDurationSeconds ?? await estimateAudioSeconds(audio);
+  const estimatedProcessingSeconds = estimateProcessingSeconds(audioSeconds, elements.modelSize.value);
+
   setProcessingState(statusMessage);
   await waitForNextFrame();
 
@@ -303,11 +420,19 @@ async function submitAudio(audio, filename, statusMessage) {
     request.open("POST", "/api/transcriptions");
     request.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) {
-        setStatus(`${statusMessage} ${formatPercent(event.loaded / event.total)}`);
+        const uploadProgress = event.loaded / event.total;
+        const percent = formatPercent(uploadProgress);
+
+        setStatus(`${statusMessage} ${percent}`);
+        setProgress(
+          uploadProgress * 0.2,
+          `Uploading audio, ${percent} complete`,
+        );
       }
     };
     request.upload.onload = () => {
       setStatus(APP_CONFIG.processingStatusMessage);
+      startEstimatedProcessingProgress(estimatedProcessingSeconds);
     };
     request.onload = () => {
       let responsePayload;
@@ -334,6 +459,8 @@ async function submitAudio(audio, filename, statusMessage) {
   state.lastResult = payload;
   elements.transcript.value = formatDiarizedTranscript(payload);
   setResultMeta(payload);
+  setProgress(1, "Complete");
+  clearProgressTimer();
   restoreInteractiveState(APP_CONFIG.completionStatusMessage, APP_CONFIG.timerReadyLabel);
 }
 
@@ -389,6 +516,10 @@ async function stopRecording() {
 async function handleRecordingStop() {
   try {
     const blob = new Blob(state.chunks, { type: "audio/webm" });
+    const recordedDurationSeconds = state.startedAt
+      ? Math.max(1, (Date.now() - state.startedAt) / 1000)
+      : null;
+
     if (blob.size === 0) {
       throw new Error(APP_CONFIG.emptyRecordingMessage);
     }
@@ -396,8 +527,10 @@ async function handleRecordingStop() {
       blob,
       APP_CONFIG.defaultUploadFilename,
       APP_CONFIG.processingStatusMessage,
+      recordedDurationSeconds,
     );
   } catch (error) {
+    resetProgress();
     restoreAfterFailedSubmission(error.message);
   }
 }
@@ -423,6 +556,7 @@ async function handleFileUpload() {
   try {
     await submitAudio(file, file.name, APP_CONFIG.uploadStatusMessage);
   } catch (error) {
+    resetProgress();
     restoreAfterFailedSubmission(error.message);
   }
 }

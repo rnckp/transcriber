@@ -387,6 +387,46 @@ button:disabled {
   text-align: right;
 }
 
+.progress-panel {
+  margin-top: 14px;
+  padding: 15px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(43, 111, 232, 0.12);
+}
+
+.progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+#progress-eta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(43, 111, 232, 0.1);
+}
+
+#progress-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), #1f8f6f);
+  transition: width 240ms ease;
+}
+
 .transcript-panel {
   margin-top: 16px;
   padding: 18px;
@@ -477,7 +517,8 @@ textarea {
   #timer,
   .recording-signal span,
   .timer-state::before,
-  .timer-state::after {
+  .timer-state::after,
+  #progress-fill {
     animation: none !important;
     transition: none;
   }
@@ -505,6 +546,7 @@ textarea {
 
   .panel-heading,
   .transcript-header,
+  .progress-copy,
   .status-row,
   .field-grid,
   .controls {
@@ -522,6 +564,7 @@ textarea {
   }
 
   .timer-card,
+  #progress-eta,
   #status {
     text-align: left;
   }

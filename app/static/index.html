@@ -61,6 +61,23 @@
           <p id="status" aria-live="polite">Ready to record or process audio.</p>
         </div>
 
+        <div class="progress-panel" id="processing-progress" hidden>
+          <div class="progress-copy">
+            <p class="section-label">Progress</p>
+            <p id="progress-eta">Estimating time left...</p>
+          </div>
+          <div
+            class="progress-track"
+            role="progressbar"
+            aria-label="Transcription progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <span id="progress-fill"></span>
+          </div>
+        </div>
+
         <div class="transcript-panel">
           <div class="transcript-header">
             <div>
