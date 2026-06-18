@@ -25,6 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 CONFIG_PATH = BASE_DIR.parent / "config.yaml"
 INDEX_TEMPLATE = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+MULTIPART_BODY_OVERHEAD_BYTES = 64 * 1024
 
 config = load_config(CONFIG_PATH)
 configure_logging(config.logging.level)
@@ -38,11 +39,28 @@ service = TranscriptionRouterService(
 app = FastAPI(title="Transcriber")
 app.state.config = config
 app.state.service = service
+
+
+def _header_value(scope: dict[str, object], header_name: bytes) -> str:
+    for name, value in scope.get("headers", []):
+        if name.lower() == header_name:
+            return value.decode("latin-1")
+    return ""
+
+
+def _upload_body_limit_bytes(scope: dict[str, object]) -> int:
+    audio_limit = (
+        scope["app"].state.config.transcription.max_upload_size_mb * BYTES_PER_MEGABYTE
+    )
+    content_type = _header_value(scope, b"content-type")
+    if content_type.lower().startswith("multipart/form-data"):
+        return audio_limit + MULTIPART_BODY_OVERHEAD_BYTES
+    return audio_limit
+
+
 app.add_middleware(
     UploadSizeLimitMiddleware,
-    max_upload_size_bytes=lambda scope: (
-        scope["app"].state.config.transcription.max_upload_size_mb * BYTES_PER_MEGABYTE
-    ),
+    max_upload_size_bytes=_upload_body_limit_bytes,
     paths={"/api/transcriptions"},
     error_message_factory=lambda scope: build_upload_too_large_message(
         scope["app"].state.config.transcription.max_upload_size_mb

@@ -24,6 +24,10 @@ class TranscriptionError(Exception):
     """Raised when transcription cannot be completed."""
 
 
+class TranscriptionBusyError(TranscriptionError):
+    """Raised when a transcription backend is already processing that model."""
+
+
 class UnsupportedLanguageError(TranscriptionError):
     """Raised when the requested language is not configured."""
 

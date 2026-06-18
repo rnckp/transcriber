@@ -14,6 +14,7 @@ from app.models import (
     TranscriptionSegmentResponse,
 )
 from app.services.transcription import (
+    TranscriptionBusyError,
     TranscriptionError,
     UnsupportedLanguageError,
     UnsupportedModelSizeError,
@@ -162,6 +163,15 @@ async def create_transcription(
         return _error_response("unsupported_language", str(exc))
     except UnsupportedModelSizeError as exc:
         return _error_response("unsupported_model_size", str(exc))
+    except TranscriptionBusyError:
+        return _error_response(
+            code="transcription_busy",
+            message=(
+                "A transcription is already running for this model. "
+                "Try again when it finishes."
+            ),
+            status_code=status.HTTP_409_CONFLICT,
+        )
     except TranscriptionError:
         logger.exception(
             "Transcription failed",

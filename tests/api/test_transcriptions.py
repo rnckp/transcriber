@@ -5,7 +5,11 @@ from fastapi.testclient import TestClient
 
 from app.config import SupportedLanguage, SupportedModelSize, load_config
 from app.main import app
-from app.services.transcription import TranscriptionError, TranscriptionResult
+from app.services.transcription import (
+    TranscriptionBusyError,
+    TranscriptionError,
+    TranscriptionResult,
+)
 from tests.stubs import DiarizingStubService, StubService
 
 
@@ -20,6 +24,13 @@ class FailingService:
         self, audio_path: Path, language: str, model_size: str
     ) -> TranscriptionResult:
         raise TranscriptionError(self.message)
+
+
+class BusyService:
+    def transcribe(
+        self, audio_path: Path, language: str, model_size: str
+    ) -> TranscriptionResult:
+        raise TranscriptionBusyError("Model is already transcribing.")
 
 
 def test_post_transcriptions_rejects_unknown_model_size() -> None:
@@ -151,6 +162,26 @@ def test_post_transcriptions_rejects_oversized_upload() -> None:
     assert stub_service.calls == []
 
 
+def test_post_transcriptions_accepts_upload_at_exact_file_limit() -> None:
+    config = load_config(Path("config.yaml"))
+    config.transcription.max_upload_size_mb = 1
+    config.transcription.upload_chunk_size_mb = 1
+    app.state.config = config
+    stub_service = StubService()
+    app.state.service = stub_service
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/transcriptions",
+        data={"language": "de", "model_size": "small"},
+        files={"audio": ("sample.webm", b"a" * (1024 * 1024), "audio/webm")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["transcript"] == "Hallo Welt"
+    assert len(stub_service.calls) == 1
+
+
 def test_post_transcriptions_rejects_oversized_body_before_route_validation() -> None:
     config = load_config(Path("config.yaml"))
     config.transcription.max_upload_size_mb = 1
@@ -193,6 +224,26 @@ def test_post_transcriptions_returns_structured_error_for_transcription_failures
         "error": {
             "code": "transcription_failed",
             "message": "Transcription failed. Check server logs for details.",
+        }
+    }
+
+
+def test_post_transcriptions_rejects_busy_transcription_backend() -> None:
+    app.state.config = load_config(Path("config.yaml"))
+    app.state.service = BusyService()
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/transcriptions",
+        data={"language": "de", "model_size": "small"},
+        files={"audio": ("sample.webm", b"audio", "audio/webm")},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "error": {
+            "code": "transcription_busy",
+            "message": "A transcription is already running for this model. Try again when it finishes.",
         }
     }
 

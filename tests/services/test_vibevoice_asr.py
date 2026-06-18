@@ -1,10 +1,15 @@
 import sys
 import types
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.config import SupportedLanguage, SupportedModelSize, TranscriptionConfig
 from app.services.vibevoice_asr import VibeVoiceASRService
+from app.services.transcription import TranscriptionBusyError
 
 
 def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
@@ -137,6 +142,52 @@ def test_vibevoice_caches_backend_per_model_id(tmp_path: Path) -> None:
         "microsoft/VibeVoice-ASR",
         "microsoft/VibeVoice-ASR-Large",
     ]
+
+
+def test_vibevoice_rejects_concurrent_transcription_for_same_model(
+    tmp_path: Path,
+) -> None:
+    config = TranscriptionConfig(
+        supported_languages=[SupportedLanguage(code="de", label="German")],
+        supported_model_sizes=[
+            SupportedModelSize(
+                id="vibevoice-7b",
+                label="VibeVoice ASR 7B",
+                model_name="microsoft/VibeVoice-ASR",
+                backend="vibevoice_asr",
+            )
+        ],
+    )
+    first_started = Event()
+    release_first = Event()
+    backend = MagicMock()
+
+    def transcribe(**kwargs):  # type: ignore[no-untyped-def]
+        del kwargs
+        first_started.set()
+        release_first.wait(timeout=2)
+        return {"raw_text": "first", "segments": []}
+
+    backend.transcribe.side_effect = transcribe
+    service = VibeVoiceASRService(config)
+
+    with patch.object(VibeVoiceASRService, "_load_backend", return_value=backend):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(
+                service.transcribe,
+                tmp_path / "audio.webm",
+                "de",
+                "vibevoice-7b",
+            )
+            assert first_started.wait(timeout=2)
+
+            with pytest.raises(TranscriptionBusyError):
+                service.transcribe(tmp_path / "other.webm", "de", "vibevoice-7b")
+
+            release_first.set()
+            assert first.result(timeout=2).transcript == "first"
+
+    assert backend.transcribe.call_count == 1
 
 
 def test_vibevoice_loads_local_inference_adapter() -> None:

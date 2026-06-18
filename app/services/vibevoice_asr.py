@@ -4,6 +4,7 @@ from typing import Any
 
 from app.config import TranscriptionConfig
 from app.services.transcription import (
+    TranscriptionBusyError,
     TranscriptionError,
     TranscriptionResult,
     TranscriptionSegment,
@@ -25,6 +26,12 @@ class VibeVoiceASRService:
         }
         self._backends: dict[str, Any] = {}
         self._backend_lock = Lock()
+        self._inference_locks: dict[str, Lock] = {}
+        self._inference_locks_guard = Lock()
+
+    def _get_inference_lock(self, model_size: str) -> Lock:
+        with self._inference_locks_guard:
+            return self._inference_locks.setdefault(model_size, Lock())
 
     def _detect_device(self) -> str:
         if self._config.vibevoice_device != "auto":
@@ -157,15 +164,23 @@ class VibeVoiceASRService:
 
         try:
             backend = self._get_or_load_backend(model_size)
-            result = backend.transcribe(
-                audio_path=str(audio_path),
-                max_new_tokens=self._config.vibevoice_max_new_tokens,
-                temperature=self._config.vibevoice_temperature,
-                top_p=self._config.vibevoice_top_p,
-                do_sample=self._config.vibevoice_do_sample,
-                num_beams=self._config.vibevoice_num_beams,
-                repetition_penalty=self._config.vibevoice_repetition_penalty,
-            )
+            inference_lock = self._get_inference_lock(model_size)
+            if not inference_lock.acquire(blocking=False):
+                raise TranscriptionBusyError(
+                    "A transcription is already running for this model."
+                )
+            try:
+                result = backend.transcribe(
+                    audio_path=str(audio_path),
+                    max_new_tokens=self._config.vibevoice_max_new_tokens,
+                    temperature=self._config.vibevoice_temperature,
+                    top_p=self._config.vibevoice_top_p,
+                    do_sample=self._config.vibevoice_do_sample,
+                    num_beams=self._config.vibevoice_num_beams,
+                    repetition_penalty=self._config.vibevoice_repetition_penalty,
+                )
+            finally:
+                inference_lock.release()
             segments = self._normalize_segments(result.get("segments"))
             transcript = "\n\n".join(
                 self._format_segment(segment) for segment in segments
@@ -183,6 +198,8 @@ class VibeVoiceASRService:
         except UnsupportedLanguageError:
             raise
         except UnsupportedModelSizeError:
+            raise
+        except TranscriptionBusyError:
             raise
         except TranscriptionError:
             raise
