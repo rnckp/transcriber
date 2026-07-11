@@ -44,7 +44,7 @@ Configured model options live in `config.yaml`:
 - `tiny`, `base`, `small`, `medium`, `large`: `mlx-whisper` models cached under `transcription.cache_dir`
 - `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local vendored VibeVoice package
 
-Models download on first use and are reused from their cache afterward. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
+Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between MLX Whisper and VibeVoice automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
 
 ## API
 
