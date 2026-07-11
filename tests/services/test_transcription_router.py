@@ -67,6 +67,13 @@ def _build_router(
     )
 
 
+def _wait_for_pending_request(router: TranscriptionRouterService) -> None:
+    with router._lifecycle_condition:
+        assert router._lifecycle_condition.wait_for(
+            lambda: bool(router._pending_requests), timeout=2
+        )
+
+
 def test_router_dispatches_by_model_backend(tmp_path: Path) -> None:
     whisper = RecordingBackend("whisper")
     vibevoice = RecordingBackend("vibevoice")
@@ -147,7 +154,6 @@ def test_router_serializes_transcription_across_backend_switches(
 ) -> None:
     first_started = Event()
     release_first = Event()
-    second_waiting = Event()
     whisper = RecordingBackend("whisper")
     vibevoice = RecordingBackend("vibevoice")
     original_transcribe = whisper.transcribe
@@ -161,13 +167,6 @@ def test_router_serializes_transcription_across_backend_switches(
 
     whisper.transcribe = blocking_transcribe  # type: ignore[method-assign]
     router = _build_router(whisper, vibevoice)
-    original_wait = router._lifecycle_condition.wait
-
-    def observed_wait(timeout: float | None = None) -> bool:
-        second_waiting.set()
-        return original_wait(timeout)
-
-    router._lifecycle_condition.wait = observed_wait  # type: ignore[method-assign]
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         first = executor.submit(
@@ -177,7 +176,7 @@ def test_router_serializes_transcription_across_backend_switches(
         second = executor.submit(
             router.transcribe, tmp_path / "second.webm", "de", "vibevoice-7b"
         )
-        assert second_waiting.wait(timeout=2)
+        _wait_for_pending_request(router)
         assert vibevoice.calls == []
 
         release_first.set()
@@ -222,6 +221,64 @@ def test_router_allows_concurrent_calls_to_same_backend(tmp_path: Path) -> None:
         release_first.set()
         assert first.result(timeout=2).transcript == "vibevoice"
         assert second.result(timeout=2).transcript == "vibevoice"
+
+
+def test_router_prioritizes_pending_switch_over_late_active_backend_call(
+    tmp_path: Path,
+) -> None:
+    first_entered = Event()
+    release_first = Event()
+    late_first_entered = Event()
+    events: list[str] = []
+    whisper = RecordingBackend("whisper", events)
+    vibevoice = RecordingBackend("vibevoice", events)
+    original_whisper_transcribe = whisper.transcribe
+    whisper_call_lock = Lock()
+    whisper_call_count = 0
+
+    def controlled_whisper_transcribe(
+        audio_path: Path, language: str, model_size: str
+    ) -> TranscriptionResult:
+        nonlocal whisper_call_count
+        with whisper_call_lock:
+            whisper_call_count += 1
+            current_call = whisper_call_count
+        if current_call == 1:
+            first_entered.set()
+            assert release_first.wait(timeout=2)
+        else:
+            late_first_entered.set()
+        return original_whisper_transcribe(audio_path, language, model_size)
+
+    whisper.transcribe = controlled_whisper_transcribe  # type: ignore[method-assign]
+    router = _build_router(whisper, vibevoice)
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        first = executor.submit(
+            router.transcribe, tmp_path / "first.webm", "de", "small"
+        )
+        assert first_entered.wait(timeout=2)
+        switching = executor.submit(
+            router.transcribe, tmp_path / "switch.webm", "de", "vibevoice-7b"
+        )
+        _wait_for_pending_request(router)
+        late_first = executor.submit(
+            router.transcribe, tmp_path / "late.webm", "de", "small"
+        )
+        assert not late_first_entered.wait(timeout=0.1)
+
+        release_first.set()
+        assert first.result(timeout=2).transcript == "whisper"
+        assert switching.result(timeout=2).transcript == "vibevoice"
+        assert late_first.result(timeout=2).transcript == "whisper"
+
+    assert events == [
+        "transcribe:whisper",
+        "release:whisper",
+        "transcribe:vibevoice",
+        "release:vibevoice",
+        "transcribe:whisper",
+    ]
 
 
 def test_router_rejects_unconfigured_model(tmp_path: Path) -> None:

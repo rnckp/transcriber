@@ -1,3 +1,4 @@
+from collections import deque
 from pathlib import Path
 from threading import Condition
 
@@ -23,6 +24,7 @@ class TranscriptionRouterService:
         self._active_backend_name: str | None = None
         self._active_calls = 0
         self._switching = False
+        self._pending_requests: deque[tuple[object, str]] = deque()
         self._lifecycle_condition = Condition()
 
     def transcribe(
@@ -41,17 +43,37 @@ class TranscriptionRouterService:
                 f"No transcription backend configured for model size: {model_size}"
             )
 
+        request_ticket = object()
         previous_backend_name: str | None = None
+        switch_owner = False
         with self._lifecycle_condition:
-            while self._switching or (
-                self._active_backend_name not in {None, backend_name}
-                and self._active_calls > 0
+            if (
+                not self._switching
+                and not self._pending_requests
+                and self._active_backend_name == backend_name
             ):
-                self._lifecycle_condition.wait()
-
-            if self._active_backend_name != backend_name:
-                self._switching = True
-                previous_backend_name = self._active_backend_name
+                self._active_calls += 1
+            else:
+                self._pending_requests.append((request_ticket, backend_name))
+                self._lifecycle_condition.notify_all()
+                while True:
+                    owns_next_request = (
+                        self._pending_requests
+                        and self._pending_requests[0][0] is request_ticket
+                    )
+                    if owns_next_request and not self._switching:
+                        if self._active_backend_name == backend_name:
+                            self._pending_requests.popleft()
+                            self._active_calls += 1
+                            self._lifecycle_condition.notify_all()
+                            break
+                        if self._active_calls == 0:
+                            self._pending_requests.popleft()
+                            self._switching = True
+                            switch_owner = True
+                            previous_backend_name = self._active_backend_name
+                            break
+                    self._lifecycle_condition.wait()
 
         if previous_backend_name is not None:
             try:
@@ -65,11 +87,12 @@ class TranscriptionRouterService:
                     f"{previous_backend_name}: {exc}"
                 ) from exc
 
-        with self._lifecycle_condition:
-            self._active_backend_name = backend_name
-            self._switching = False
-            self._active_calls += 1
-            self._lifecycle_condition.notify_all()
+        if switch_owner:
+            with self._lifecycle_condition:
+                self._active_backend_name = backend_name
+                self._switching = False
+                self._active_calls += 1
+                self._lifecycle_condition.notify_all()
 
         try:
             return backend.transcribe(audio_path, language, model_size)
