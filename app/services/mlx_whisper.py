@@ -1,8 +1,10 @@
 from pathlib import Path
 from threading import Lock
 
+import mlx.core as mx
 import mlx_whisper
 from mlx_whisper import load_models
+from mlx_whisper.transcribe import ModelHolder
 
 from app.config import TranscriptionConfig
 from app.services.transcription import (
@@ -31,6 +33,11 @@ class MlxWhisperService:
         self._supported_languages = {
             language.code for language in config.supported_languages
         }
+
+    def release(self) -> None:
+        ModelHolder.model = None
+        ModelHolder.model_path = None
+        mx.clear_cache()
 
     def _get_model_lock(self, model_size: str) -> Lock:
         with self._model_locks_guard:

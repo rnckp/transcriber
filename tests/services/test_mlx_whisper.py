@@ -5,10 +5,27 @@ from time import sleep
 from unittest.mock import patch
 
 import pytest
+from mlx_whisper.transcribe import ModelHolder
 
 from app.config import SupportedLanguage, SupportedModelSize, TranscriptionConfig
 from app.services.mlx_whisper import MlxWhisperService
 from app.services.transcription import UnsupportedLanguageError
+
+
+def test_release_drops_loaded_whisper_model_and_clears_mlx_cache(
+    tmp_path: Path,
+) -> None:
+    service = MlxWhisperService(TranscriptionConfig(cache_dir=tmp_path / "models"))
+    retained_model = object()
+    ModelHolder.model = retained_model
+    ModelHolder.model_path = "retained-model"
+
+    with patch("app.services.mlx_whisper.mx.clear_cache") as clear_cache:
+        service.release()
+
+    assert ModelHolder.model is None
+    assert ModelHolder.model_path is None
+    clear_cache.assert_called_once_with()
 
 
 def test_get_model_reuses_cached_instance(tmp_path: Path) -> None:

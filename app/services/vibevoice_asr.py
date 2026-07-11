@@ -1,3 +1,4 @@
+import gc
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -28,6 +29,15 @@ class VibeVoiceASRService:
         self._backend_lock = Lock()
         self._inference_locks: dict[str, Lock] = {}
         self._inference_locks_guard = Lock()
+
+    def release(self) -> None:
+        import torch
+
+        with self._backend_lock:
+            self._backends.clear()
+        gc.collect()
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            torch.mps.empty_cache()
 
     def _get_inference_lock(self, model_size: str) -> Lock:
         with self._inference_locks_guard:

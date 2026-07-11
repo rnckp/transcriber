@@ -12,6 +12,36 @@ from app.services.vibevoice_asr import VibeVoiceASRService
 from app.services.transcription import TranscriptionBusyError
 
 
+def test_release_drops_vibevoice_backends_and_clears_available_mps_cache() -> None:
+    service = VibeVoiceASRService(TranscriptionConfig())
+    service._backends["vibevoice-7b"] = object()
+
+    with (
+        patch("gc.collect") as collect,
+        patch("torch.backends.mps.is_available", return_value=True),
+        patch("torch.mps.empty_cache") as empty_cache,
+    ):
+        service.release()
+
+    assert service._backends == {}
+    collect.assert_called_once_with()
+    empty_cache.assert_called_once_with()
+
+
+def test_release_skips_mps_cache_when_mps_is_unavailable() -> None:
+    service = VibeVoiceASRService(TranscriptionConfig())
+
+    with (
+        patch("gc.collect") as collect,
+        patch("torch.backends.mps.is_available", return_value=False),
+        patch("torch.mps.empty_cache") as empty_cache,
+    ):
+        service.release()
+
+    collect.assert_called_once_with()
+    empty_cache.assert_not_called()
+
+
 def test_vibevoice_formats_diarized_segments(tmp_path: Path) -> None:
     config = TranscriptionConfig(
         supported_languages=[SupportedLanguage(code="de", label="German")],
