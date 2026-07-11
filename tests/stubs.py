@@ -7,6 +7,9 @@ class StubService:
     def __init__(self) -> None:
         self.calls: list[tuple[Path, str, str]] = []
 
+    def release(self) -> None:
+        pass
+
     def transcribe(
         self,
         audio_path: Path,
@@ -23,6 +26,9 @@ class StubService:
 
 
 class DiarizingStubService(StubService):
+    def release(self) -> None:
+        pass
+
     def transcribe(
         self,
         audio_path: Path,
