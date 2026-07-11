@@ -147,7 +147,7 @@ def test_router_serializes_transcription_across_backend_switches(
 ) -> None:
     first_started = Event()
     release_first = Event()
-    second_attempted = Event()
+    second_waiting = Event()
     whisper = RecordingBackend("whisper")
     vibevoice = RecordingBackend("vibevoice")
     original_transcribe = whisper.transcribe
@@ -161,18 +161,23 @@ def test_router_serializes_transcription_across_backend_switches(
 
     whisper.transcribe = blocking_transcribe  # type: ignore[method-assign]
     router = _build_router(whisper, vibevoice)
+    original_wait = router._lifecycle_condition.wait
 
-    def run_vibevoice() -> TranscriptionResult:
-        second_attempted.set()
-        return router.transcribe(tmp_path / "second.webm", "de", "vibevoice-7b")
+    def observed_wait(timeout: float | None = None) -> bool:
+        second_waiting.set()
+        return original_wait(timeout)
+
+    router._lifecycle_condition.wait = observed_wait  # type: ignore[method-assign]
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         first = executor.submit(
             router.transcribe, tmp_path / "first.webm", "de", "small"
         )
         assert first_started.wait(timeout=2)
-        second = executor.submit(run_vibevoice)
-        assert second_attempted.wait(timeout=2)
+        second = executor.submit(
+            router.transcribe, tmp_path / "second.webm", "de", "vibevoice-7b"
+        )
+        assert second_waiting.wait(timeout=2)
         assert vibevoice.calls == []
 
         release_first.set()
