@@ -4,7 +4,7 @@
 
 **Goal:** Automatically unload the active transcription backend when switching between MLX Whisper and PyTorch VibeVoice so their models do not compete for Apple unified memory.
 
-**Architecture:** Extend the transcription backend protocol with an explicit `release()` operation. Each backend owns cleanup of its framework-specific retained state, while the router owns serialized switching, active-backend tracking, release ordering, and cleanup error propagation.
+**Architecture:** Extend the transcription backend protocol with an explicit `release()` operation. Each backend owns cleanup of its framework-specific retained state, while a router condition coordinates active-call counts and cross-backend switching without changing same-backend concurrency behavior.
 
 **Tech Stack:** Python 3.13, FastAPI service layer, `mlx-whisper`/MLX Metal, PyTorch MPS, pytest, Ruff, uv.
 
@@ -12,7 +12,7 @@
 
 - Consecutive requests using the same backend must retain and reuse the loaded model.
 - Switching backend families must release the previous backend before dispatching the new request.
-- The router must serialize transcription across backend families so no live request is released concurrently.
+- The router must wait for live calls before switching backend families, without queuing same-backend calls that currently receive a busy response.
 - Downloaded model files and resolved local model paths must remain cached on disk.
 - No dependency or configuration changes.
 - Use `uv run` for all Python, pytest, and Ruff commands.
@@ -25,7 +25,7 @@
 - `app/services/transcription_router.py`: active-backend lifecycle coordination.
 - `tests/services/test_mlx_whisper.py`: focused MLX release regression test.
 - `tests/services/test_vibevoice_asr.py`: focused VibeVoice release regression tests.
-- `tests/services/test_transcription_router.py`: switch ordering, reuse, failure, and serialization tests.
+- `tests/services/test_transcription_router.py`: switch ordering, reuse, failure, cross-backend waiting, and same-backend concurrency tests.
 - `tests/stubs.py`: protocol-compatible test backends.
 - `README.md`: user-visible reload and disk-cache behavior.
 - `NOTES.md`: durable root-cause and lifecycle constraint.
@@ -187,7 +187,7 @@ git commit -m "fix(transcription): release accelerator model caches"
 
 **Interfaces:**
 - Consumes: `TranscriptionService.release() -> None` from Task 1.
-- Produces: router switching that releases the prior backend before dispatch and wraps release failures in `TranscriptionError`.
+- Produces: condition-based router switching that waits for prior calls, preserves same-backend concurrency, releases before dispatch, and wraps release failures in `TranscriptionError`.
 
 - [ ] **Step 1: Make router test doubles lifecycle-aware**
 
@@ -289,33 +289,55 @@ Expected: switch-order test FAIL because no release event occurs.
 
 - [ ] **Step 4: Implement minimal active-backend switching**
 
-Import `Lock` and `TranscriptionError` in `app/services/transcription_router.py`.
+Import `Condition` and `TranscriptionError` in `app/services/transcription_router.py`.
 Initialize lifecycle state in `__init__`:
 
 ```python
         self._active_backend_name: str | None = None
-        self._lifecycle_lock = Lock()
+        self._active_calls = 0
+        self._switching = False
+        self._lifecycle_condition = Condition()
 ```
 
 Replace the final dispatch with:
 
 ```python
-        with self._lifecycle_lock:
-            if (
-                self._active_backend_name is not None
-                and self._active_backend_name != backend_name
+        previous_backend_name: str | None = None
+        with self._lifecycle_condition:
+            while self._switching or (
+                self._active_backend_name not in {None, backend_name}
+                and self._active_calls > 0
             ):
-                previous_backend = self._backends[self._active_backend_name]
-                try:
-                    previous_backend.release()
-                except Exception as exc:
-                    raise TranscriptionError(
-                        "Failed to release transcription backend "
-                        f"{self._active_backend_name}: {exc}"
-                    ) from exc
+                self._lifecycle_condition.wait()
 
+            if self._active_backend_name != backend_name:
+                self._switching = True
+                previous_backend_name = self._active_backend_name
+
+        if previous_backend_name is not None:
+            try:
+                self._backends[previous_backend_name].release()
+            except Exception as exc:
+                with self._lifecycle_condition:
+                    self._switching = False
+                    self._lifecycle_condition.notify_all()
+                raise TranscriptionError(
+                    "Failed to release transcription backend "
+                    f"{previous_backend_name}: {exc}"
+                ) from exc
+
+        with self._lifecycle_condition:
             self._active_backend_name = backend_name
+            self._switching = False
+            self._active_calls += 1
+            self._lifecycle_condition.notify_all()
+
+        try:
             return backend.transcribe(audio_path, language, model_size)
+        finally:
+            with self._lifecycle_condition:
+                self._active_calls -= 1
+                self._lifecycle_condition.notify_all()
 ```
 
 - [ ] **Step 5: Run router tests and verify GREEN**
@@ -420,7 +442,14 @@ def test_router_serializes_transcription_across_backend_switches(
 
 Run: `UV_CACHE_DIR=/tmp/transcriber-uv-cache uv run --offline pytest tests/services/test_transcription_router.py -k serializes -v`
 
-Expected: PASS, demonstrating the lifecycle lock is held for the complete transcription call.
+Expected: PASS, demonstrating a cross-backend switch waits for the active call
+without holding the condition during inference.
+
+Add a second concurrency test using two calls to the same VibeVoice recording
+backend. Block the first call, signal that the second entered the backend, and
+assert it was not queued by the router. The backend-specific VibeVoice tests
+continue to verify that the real service turns this concurrent entry into
+`TranscriptionBusyError`/HTTP 409.
 
 - [ ] **Step 9: Commit router lifecycle coordination**
 

@@ -15,14 +15,17 @@ switch.
 ## Selected Approach
 
 The transcription router will own backend lifecycle coordination. It will track
-the active backend and serialize transcription across backends with a lifecycle
-lock. Before dispatching a request to a different backend, it will release the
-previous backend and then run the requested backend.
+the active backend, active call count, and switching state with a condition.
+Before dispatching a request to a different backend, it will wait for active
+calls to finish, release the previous backend, and then run the requested
+backend.
 
-This preserves in-memory model reuse for consecutive requests using the same
-backend. It intentionally prevents concurrent accelerator work across backends,
-because switching while another request is using the previous backend could
-release live model state and because both frameworks compete for the same Apple
+This preserves in-memory model reuse and existing concurrency behavior for
+requests using the same backend. In particular, VibeVoice's per-model lock still
+returns the existing busy response for a concurrent request instead of silently
+queuing it behind the router. Concurrent work across different backends is
+prevented because switching while another request is using the previous backend
+could release live model state and both frameworks compete for the same Apple
 unified memory.
 
 ## Service Contract
@@ -52,12 +55,15 @@ hidden.
 For each transcription request, the router will:
 
 1. Validate the model id and resolve its backend.
-2. Acquire the router lifecycle lock.
-3. If the selected backend differs from the active backend, call `release()` on
-   the previous backend.
-4. Mark the selected backend active and dispatch the transcription while still
-   holding the lock.
-5. Release the lock after success or failure.
+2. Enter the router lifecycle condition.
+3. If the selected backend matches the active backend and no switch is running,
+   increment its active-call count and dispatch without holding the condition;
+   backend-specific concurrency behavior remains in force.
+4. If the selected backend differs, wait until active calls finish, mark a
+   switch in progress, release the previous backend, and mark the selected
+   backend active.
+5. Dispatch without holding the condition, then decrement the active-call count
+   and notify waiting switches after success or failure.
 
 The selected backend remains active after a failed transcription because it may
 have loaded model state before failing. A later switch will still release it.
