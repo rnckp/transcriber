@@ -176,3 +176,4 @@ cython_debug/
 # IDE and editor files
 AGENTS.md
 .DS_Store
+NEXT-STEPS.md
