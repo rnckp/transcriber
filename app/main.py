@@ -134,6 +134,7 @@ async def index(request: Request) -> HTMLResponse:
             "progressMaxTranscriptionFraction": runtime_config.ui.progress_max_transcription_fraction,
             "progressMinVisiblePercent": runtime_config.ui.progress_min_visible_percent,
             "processingStatusMessage": runtime_config.ui.processing_status_message,
+            "modelPreparationMessage": runtime_config.ui.model_preparation_message,
             "uploadStatusMessage": runtime_config.ui.upload_status_message,
             "uploadReadyStatusMessage": runtime_config.ui.upload_ready_status_message,
             "emptyRecordingMessage": runtime_config.ui.empty_recording_message,
@@ -167,6 +168,10 @@ async def index(request: Request) -> HTMLResponse:
                 model.id: model.language_codes
                 for model in runtime_config.transcription.supported_model_sizes
                 if model.language_codes is not None
+            },
+            "modelLabels": {
+                model.id: model.label
+                for model in runtime_config.transcription.supported_model_sizes
             },
         }
     ).replace("</", "<\\/")

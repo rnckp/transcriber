@@ -32,6 +32,8 @@ const elements = {
   copyButton: document.querySelector("#copy-button"),
   saveButton: document.querySelector("#save-button"),
   status: document.querySelector("#status"),
+  modelPreparationNote: document.querySelector("#model-preparation-note"),
+  modelPreparationMessage: document.querySelector("#model-preparation-message"),
   timer: document.querySelector("#timer"),
   timerCard: document.querySelector("#timer-card"),
   timerState: document.querySelector("#timer-state"),
@@ -49,6 +51,19 @@ const elements = {
 
 function setStatus(message) {
   elements.status.textContent = message;
+}
+
+function showModelPreparationNote() {
+  const modelId = elements.modelSize.value;
+  const modelLabel = APP_CONFIG.modelLabels[modelId] ?? modelId;
+  elements.modelPreparationMessage.textContent = APP_CONFIG.modelPreparationMessage
+    .replace("{model}", modelLabel);
+  elements.modelPreparationNote.hidden = false;
+}
+
+function hideModelPreparationNote() {
+  elements.modelPreparationNote.hidden = true;
+  elements.modelPreparationMessage.textContent = "";
 }
 
 function setTimerState(label, className = "") {
@@ -311,6 +326,7 @@ function restoreInteractiveState(
 ) {
   state.isRecording = false;
   state.isProcessing = false;
+  hideModelPreparationNote();
   elements.recordButton.disabled = false;
   elements.recordButton.textContent = APP_CONFIG.recordButtonLabel;
   elements.resetButton.disabled = resetButtonDisabled;
@@ -443,6 +459,7 @@ async function submitAudio(audio, filename, statusMessage, recordedDurationSecon
       }
     };
     request.upload.onload = () => {
+      showModelPreparationNote();
       setStatus(APP_CONFIG.processingStatusMessage);
       startEstimatedProcessingProgress(estimatedProcessingSeconds);
     };

@@ -386,6 +386,8 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
     assert "progressModelFactors" in response.text
     assert "progressMetadataTimeoutMs" in response.text
     assert "modelLanguageCodes" in response.text
+    assert "modelPreparationMessage" in response.text
+    assert "modelLabels" in response.text
     assert "<\\/script><script>window.injected=true<\\/script>" in response.text
     assert "saveSuccessMessage" in response.text
     assert 'id="audio-file"' in response.text
@@ -400,6 +402,8 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     app_js = Path("app/static/app.js").read_text(encoding="utf-8")
 
     assert 'id="processing-progress"' in index_html
+    assert 'id="model-preparation-note"' in index_html
+    assert 'id="model-preparation-message"' in index_html
     assert 'id="progress-fill"' in index_html
     assert 'id="progress-eta"' in index_html
     assert 'id="progress-percent"' in index_html
@@ -413,3 +417,6 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     assert "progressTranscribingMessage" in app_js
     assert "progressMinVisiblePercent" in app_js
     assert "syncModelLanguageCompatibility" in app_js
+    assert "showModelPreparationNote" in app_js
+    assert "hideModelPreparationNote" in app_js
+    assert "do not reset the app" in Path("config.yaml").read_text(encoding="utf-8")

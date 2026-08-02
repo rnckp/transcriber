@@ -84,6 +84,7 @@ ui:
     assert config.ui.copy_feedback_ms == 1200
     assert config.ui.progress_model_factors["tiny"] == 0.35
     assert config.ui.progress_metadata_timeout_ms == 1500
+    assert "{model}" in config.ui.model_preparation_message
     assert config.ui.upload_ready_status_message == "Ready for {filename}."
     assert config.ui.save_success_message == "Saved {filename}."
     assert config.ui.save_unavailable_message == "Download not available."

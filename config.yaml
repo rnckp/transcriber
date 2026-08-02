@@ -98,6 +98,7 @@ ui:
   progress_max_transcription_fraction: 0.95
   progress_min_visible_percent: 4
   processing_status_message: "Transcribing audio locally..."
+  model_preparation_message: "Preparing {model}. On first use, the model must be downloaded and loaded. This can take several minutes. Keep this page open and do not reset the app."
   upload_status_message: "Processing audio file locally..."
   upload_ready_status_message: "Ready to process {filename}."
   empty_recording_message: "Record a little audio before stopping."

@@ -259,6 +259,10 @@ class UiConfig(BaseModel):
     progress_max_transcription_fraction: float = 0.95
     progress_min_visible_percent: int = 4
     processing_status_message: str = "Transcribing audio locally..."
+    model_preparation_message: str = (
+        "Preparing {model}. On first use, the model must be downloaded and loaded. "
+        "This can take several minutes. Keep this page open and do not reset the app."
+    )
     upload_status_message: str = "Processing audio file locally..."
     upload_ready_status_message: str = "Ready to process {filename}."
     empty_recording_message: str = "Record a little audio before stopping."
@@ -364,6 +368,7 @@ class UiConfig(BaseModel):
 
     @field_validator(
         "processing_status_message",
+        "model_preparation_message",
         "upload_status_message",
         "upload_ready_status_message",
         "empty_recording_message",

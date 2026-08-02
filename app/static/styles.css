@@ -387,6 +387,22 @@ button:disabled {
   text-align: right;
 }
 
+.model-preparation-note {
+  margin-top: 14px;
+  padding: 15px;
+  border-radius: 16px;
+  background: rgba(255, 247, 225, 0.9);
+  border: 1px solid rgba(180, 118, 20, 0.22);
+}
+
+#model-preparation-message {
+  margin: 8px 0 0;
+  color: #725015;
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .progress-panel {
   margin-top: 14px;
   padding: 15px;
