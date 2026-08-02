@@ -106,7 +106,9 @@ async def create_transcription(
     supported_language_labels = [
         item.label for item in config.transcription.supported_languages
     ]
-    supported_models = {item.id for item in config.transcription.supported_model_sizes}
+    supported_models = {
+        item.id: item for item in config.transcription.supported_model_sizes
+    }
     supported_model_labels = [
         item.label for item in config.transcription.supported_model_sizes
     ]
@@ -127,6 +129,28 @@ async def create_transcription(
                 supported_model_labels,
                 "Choose a supported model size.",
             ),
+        )
+
+    selected_model = supported_models[model_size]
+    if (
+        selected_model.language_codes is not None
+        and language not in selected_model.language_codes
+    ):
+        language_labels = [
+            item.label
+            for item in config.transcription.supported_languages
+            if item.code in selected_model.language_codes
+        ]
+        if len(language_labels) == 1:
+            compatibility = f"{language_labels[0]} only."
+        else:
+            compatibility = _build_supported_choice_message(
+                language_labels,
+                "a configured language.",
+            ).removeprefix("Choose ")
+        return _error_response(
+            code="unsupported_model_language",
+            message=f"{selected_model.label} supports {compatibility}",
         )
 
     suffix = (

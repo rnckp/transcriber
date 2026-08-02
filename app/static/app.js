@@ -165,6 +165,25 @@ function resolveSelectPreference(element, storageKey) {
   return storedValue;
 }
 
+function syncModelLanguageCompatibility() {
+  const allowedLanguageCodes = APP_CONFIG.modelLanguageCodes[elements.modelSize.value];
+  const hasRestriction = Array.isArray(allowedLanguageCodes);
+
+  Array.from(elements.language.options).forEach((option) => {
+    option.disabled = hasRestriction && !allowedLanguageCodes.includes(option.value);
+  });
+
+  if (elements.language.selectedOptions[0]?.disabled) {
+    const firstSupportedOption = Array.from(elements.language.options).find(
+      (option) => !option.disabled,
+    );
+    if (firstSupportedOption) {
+      elements.language.value = firstSupportedOption.value;
+      persistPreference(STORAGE_KEYS.language, firstSupportedOption.value);
+    }
+  }
+}
+
 function clearTimer() {
   if (state.timerId !== null) {
     window.clearInterval(state.timerId);
@@ -557,6 +576,7 @@ async function handleFileUpload() {
 function initializePreferences() {
   elements.language.value = resolveSelectPreference(elements.language, STORAGE_KEYS.language);
   elements.modelSize.value = resolveSelectPreference(elements.modelSize, STORAGE_KEYS.modelSize);
+  syncModelLanguageCompatibility();
 }
 
 elements.language.addEventListener("change", () => {
@@ -565,6 +585,7 @@ elements.language.addEventListener("change", () => {
 
 elements.modelSize.addEventListener("change", () => {
   persistPreference(STORAGE_KEYS.modelSize, elements.modelSize.value);
+  syncModelLanguageCompatibility();
 });
 
 elements.audioFile.addEventListener("change", () => {

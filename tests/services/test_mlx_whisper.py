@@ -248,6 +248,33 @@ def test_transcribe_rejects_unsupported_language(tmp_path: Path) -> None:
         service.transcribe(audio_path, "en", "small")
 
 
+def test_transcribe_rejects_language_unsupported_by_selected_model(
+    tmp_path: Path,
+) -> None:
+    config = TranscriptionConfig(
+        cache_dir=tmp_path / "models",
+        supported_languages=[
+            SupportedLanguage(code="de", label="German"),
+            SupportedLanguage(code="en", label="English"),
+        ],
+        supported_model_sizes=[
+            SupportedModelSize(
+                id="distil-large-v3",
+                label="Distil-Whisper Large v3 (English)",
+                model_name="mlx-community/distil-whisper-large-v3",
+                language_codes=["en"],
+            )
+        ],
+    )
+    service = MlxWhisperService(config)
+
+    with pytest.raises(
+        UnsupportedLanguageError,
+        match="Model distil-large-v3 does not support language: de",
+    ):
+        service.transcribe(tmp_path / "audio.webm", "de", "distil-large-v3")
+
+
 def test_get_model_loads_once_under_concurrency(tmp_path: Path) -> None:
     config = TranscriptionConfig(
         cache_dir=tmp_path / "models",

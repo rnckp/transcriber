@@ -14,7 +14,6 @@ from app.services.transcription import (
     UnsupportedModelSizeError,
 )
 
-
 LEGACY_MODEL_REPO_IDS = {
     "mlx-community/whisper-tiny": "mlx-community/whisper-tiny-mlx",
     "mlx-community/whisper-base": "mlx-community/whisper-base-mlx",
@@ -107,6 +106,17 @@ class MlxWhisperService:
         try:
             if language not in self._supported_languages:
                 raise UnsupportedLanguageError(f"Unsupported language: {language}")
+
+            model = self._model_map.get(model_size)
+            if model is None:
+                raise UnsupportedModelSizeError(f"Unsupported model size: {model_size}")
+            if (
+                model.language_codes is not None
+                and language not in model.language_codes
+            ):
+                raise UnsupportedLanguageError(
+                    f"Model {model_size} does not support language: {language}"
+                )
 
             model_path = self._get_or_load_model(model_size)
             result = mlx_whisper.transcribe(

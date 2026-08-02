@@ -41,7 +41,9 @@ Choose a language and model, then either record from the browser microphone or c
 
 Configured model options live in `config.yaml`:
 
-- `tiny`, `base`, `small`, `medium`, `large`: `mlx-whisper` models cached under `transcription.cache_dir`
+- `tiny`, `base`, `small`, `medium`: progressively larger multilingual Whisper models optimized for Apple Silicon through MLX
+- `large` (Large v3 Turbo), `large-v2`, and `large-v3`: higher-accuracy multilingual MLX Whisper options
+- `distil-large-v3-en`: a faster English-only Distil-Whisper model; selecting it limits the language picker to English
 - `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local vendored VibeVoice package
 
 Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between MLX Whisper and VibeVoice automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
@@ -89,7 +91,7 @@ Edit `config.yaml` for runtime settings:
 - `transcription.max_upload_size_mb`: upload size limit
 - `transcription.upload_chunk_size_mb`: temp-file streaming chunk size
 - `transcription.supported_languages`: language picker and backend validation
-- `transcription.supported_model_sizes`: model picker, repo ids, and backend routing
+- `transcription.supported_model_sizes`: model picker, repo ids, backend routing, and optional per-model `language_codes`
 - `transcription.vibevoice_*`: VibeVoice device, dtype, attention mode, and generation settings
 - `logging.level`: structured JSON log level
 - `ui.*`: browser labels, status messages, and progress timing heuristics

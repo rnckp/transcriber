@@ -14,20 +14,30 @@ transcription:
       label: "English"
   supported_model_sizes:
     - id: "tiny"
-      label: "Tiny"
+      label: "Whisper Tiny"
       model_name: "mlx-community/whisper-tiny-mlx"
     - id: "base"
-      label: "Base"
+      label: "Whisper Base"
       model_name: "mlx-community/whisper-base-mlx"
     - id: "small"
-      label: "Small"
+      label: "Whisper Small"
       model_name: "mlx-community/whisper-small-mlx"
     - id: "medium"
-      label: "Medium"
+      label: "Whisper Medium"
       model_name: "mlx-community/whisper-medium-mlx"
     - id: "large"
-      label: "Large"
+      label: "Whisper Large v3 Turbo"
       model_name: "mlx-community/whisper-large-v3-turbo"
+    - id: "large-v2"
+      label: "Whisper Large v2"
+      model_name: "mlx-community/whisper-large-v2-mlx"
+    - id: "large-v3"
+      label: "Whisper Large v3"
+      model_name: "mlx-community/whisper-large-v3-mlx"
+    - id: "distil-large-v3-en"
+      label: "Distil-Whisper Large v3 (English)"
+      model_name: "mlx-community/distil-whisper-large-v3"
+      language_codes: ["en"]
     - id: "vibevoice-7b"
       label: "VibeVoice ASR 7B"
       model_name: "microsoft/VibeVoice-ASR"
@@ -53,6 +63,9 @@ ui:
     small: 0.75
     medium: 1.1
     large: 1.6
+    large-v2: 2.0
+    large-v3: 2.0
+    distil-large-v3-en: 0.8
     vibevoice-7b: 2.6
   progress_default_model_factor: 1.0
   progress_default_audio_seconds: 30.0

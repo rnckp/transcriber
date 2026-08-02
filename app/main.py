@@ -2,18 +2,20 @@ import json
 from html import escape
 from pathlib import Path
 
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import uvicorn
 
 from app.api.transcriptions import (
     BYTES_PER_MEGABYTE,
     build_upload_too_large_message,
+)
+from app.api.transcriptions import (
     router as transcriptions_router,
 )
-from app.config import load_config
+from app.config import SupportedModelSize, load_config
 from app.logging import configure_logging
 from app.middleware import UploadSizeLimitMiddleware
 from app.models import ApiError, ErrorResponse
@@ -79,6 +81,22 @@ def _render_select_options(options: list[tuple[str, str]]) -> str:
     )
 
 
+def _render_model_options(configured_models: list[SupportedModelSize]) -> str:
+    options: list[str] = []
+    for model in configured_models:
+        language_codes = model.language_codes
+        language_attribute = ""
+        if language_codes is not None:
+            language_attribute = (
+                f' data-language-codes="{escape(",".join(language_codes))}"'
+            )
+        options.append(
+            f'<option value="{escape(model.id)}"{language_attribute}>'
+            f"{escape(model.label)}</option>"
+        )
+    return "".join(options)
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
     request: Request,
@@ -141,6 +159,11 @@ async def index(request: Request) -> HTMLResponse:
             "progressTranscribingMessage": runtime_config.ui.progress_transcribing_message,
             "progressUploadingMessage": runtime_config.ui.progress_uploading_message,
             "defaultUploadFilename": runtime_config.transcription.default_upload_filename,
+            "modelLanguageCodes": {
+                model.id: model.language_codes
+                for model in runtime_config.transcription.supported_model_sizes
+                if model.language_codes is not None
+            },
         }
     ).replace("</", "<\\/")
     language_options = _render_select_options(
@@ -149,11 +172,8 @@ async def index(request: Request) -> HTMLResponse:
             for language in runtime_config.transcription.supported_languages
         ]
     )
-    model_options = _render_select_options(
-        [
-            (model.id, model.label)
-            for model in runtime_config.transcription.supported_model_sizes
-        ]
+    model_options = _render_model_options(
+        runtime_config.transcription.supported_model_sizes
     )
     html = INDEX_TEMPLATE
     html = html.replace("<!--LANGUAGE_OPTIONS-->", language_options)

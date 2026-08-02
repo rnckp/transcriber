@@ -18,6 +18,20 @@ class SupportedModelSize(BaseModel):
     label: str
     model_name: str
     backend: TranscriptionBackend = "mlx_whisper"
+    language_codes: list[str] | None = None
+
+    @field_validator("language_codes")
+    @classmethod
+    def validate_language_codes(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        if not value:
+            msg = "model language_codes must include at least one item"
+            raise ValueError(msg)
+        if len(value) != len(set(value)):
+            msg = "model language_codes must be unique"
+            raise ValueError(msg)
+        return value
 
 
 class ServerConfig(BaseModel):
@@ -73,6 +87,20 @@ class TranscriptionConfig(BaseModel):
                 "upload_chunk_size_mb must be less than or equal to max_upload_size_mb"
             )
             raise ValueError(msg)
+        configured_language_codes = {
+            language.code for language in self.supported_languages
+        }
+        for model in self.supported_model_sizes:
+            if model.language_codes is None:
+                continue
+            unknown_codes = set(model.language_codes) - configured_language_codes
+            if unknown_codes:
+                codes = ", ".join(sorted(unknown_codes))
+                msg = (
+                    f"model {model.id} uses languages not present in "
+                    f"supported_languages: {codes}"
+                )
+                raise ValueError(msg)
         return self
 
     @field_validator("default_upload_filename")

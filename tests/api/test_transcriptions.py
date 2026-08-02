@@ -312,6 +312,37 @@ def test_post_transcriptions_uses_configured_language_labels_in_error_message() 
     }
 
 
+def test_post_transcriptions_rejects_language_unsupported_by_model() -> None:
+    config = load_config(Path("config.yaml"))
+    config.transcription.supported_model_sizes = [
+        SupportedModelSize(
+            id="english-only",
+            label="English only",
+            model_name="mlx-community/whisper-small.en-mlx",
+            language_codes=["en"],
+        )
+    ]
+    app.state.config = config
+    stub_service = StubService()
+    app.state.service = stub_service
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/transcriptions",
+        data={"language": "de", "model_size": "english-only"},
+        files={"audio": ("sample.webm", b"audio", "audio/webm")},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": {
+            "code": "unsupported_model_language",
+            "message": "English only supports English only.",
+        }
+    }
+    assert stub_service.calls == []
+
+
 def test_index_renders_languages_and_models_from_app_state_config() -> None:
     config = load_config(Path("config.yaml"))
     config.ui.ready_status_message = "</script><script>window.injected=true</script>"
@@ -323,6 +354,7 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
             id="custom",
             label="Custom",
             model_name="mlx-community/whisper-custom",
+            language_codes=["fr"],
         )
     ]
     app.state.config = config
@@ -333,7 +365,10 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
 
     assert response.status_code == 200
     assert '<option value="fr">French</option>' in response.text
-    assert '<option value="custom">Custom</option>' in response.text
+    assert (
+        '<option value="custom" data-language-codes="fr">Custom</option>'
+        in response.text
+    )
     assert '<option value="de">German</option>' not in response.text
     assert "record or process audio to transcribe locally" in response.text
     assert "Copy or save the finished transcript as a text file." in response.text
@@ -350,6 +385,7 @@ def test_index_renders_languages_and_models_from_app_state_config() -> None:
     assert "audioFileEmptyLabel" in response.text
     assert "progressModelFactors" in response.text
     assert "progressMetadataTimeoutMs" in response.text
+    assert "modelLanguageCodes" in response.text
     assert "<\\/script><script>window.injected=true<\\/script>" in response.text
     assert "saveSuccessMessage" in response.text
     assert 'id="audio-file"' in response.text
@@ -376,3 +412,4 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     assert "setProgress" in app_js
     assert "progressTranscribingMessage" in app_js
     assert "progressMinVisiblePercent" in app_js
+    assert "syncModelLanguageCompatibility" in app_js

@@ -33,6 +33,7 @@ transcription:
     - id: "large"
       label: "Large"
       model_name: "mlx-community/whisper-large-v3-turbo"
+      language_codes: ["en"]
     - id: "vibevoice-7b"
       label: "VibeVoice ASR 7B"
       model_name: "microsoft/VibeVoice-ASR"
@@ -65,6 +66,8 @@ ui:
         "vibevoice-7b",
     ]
     assert config.transcription.supported_model_sizes[0].backend == "mlx_whisper"
+    assert config.transcription.supported_model_sizes[0].language_codes is None
+    assert config.transcription.supported_model_sizes[1].language_codes == ["en"]
     assert config.transcription.supported_model_sizes[2].backend == "vibevoice_asr"
     assert config.transcription.vibevoice_max_new_tokens == 4096
     assert config.transcription.vibevoice_temperature == 0.0
@@ -174,6 +177,16 @@ supported_model_sizes:
     model_name: "mlx-community/whisper-small-mlx"
 """.strip(),
             "supported model ids must be unique",
+        ),
+        (
+            """
+supported_model_sizes:
+  - id: "small"
+    label: "Small"
+    model_name: "mlx-community/whisper-small-mlx"
+    language_codes: []
+""".strip(),
+            "model language_codes must include at least one item",
         ),
     ],
 )
@@ -345,6 +358,37 @@ logging:
         load_config(config_file)
 
     assert exc_info.value.errors()[0]["loc"] == ("transcription",)
+
+
+def test_load_config_rejects_model_language_not_in_global_languages(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        """
+server:
+  host: "127.0.0.1"
+  port: 8000
+transcription:
+  supported_languages:
+    - code: "de"
+      label: "German"
+  supported_model_sizes:
+    - id: "english-only"
+      label: "English only"
+      model_name: "mlx-community/whisper-small.en-mlx"
+      language_codes: ["en"]
+logging:
+  level: "INFO"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match="model english-only uses languages not present in supported_languages: en",
+    ):
+        load_config(config_file)
 
 
 def test_configure_logging_normalizes_level_and_sets_json_formatter() -> None:
