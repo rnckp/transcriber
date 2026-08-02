@@ -5,7 +5,12 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 LoggingLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-TranscriptionBackend = Literal["mlx_whisper", "vibevoice_asr"]
+TranscriptionBackend = Literal[
+    "cohere_onnx",
+    "mlx_whisper",
+    "parakeet_mlx",
+    "vibevoice_asr",
+]
 
 
 class SupportedLanguage(BaseModel):
@@ -54,6 +59,10 @@ class TranscriptionConfig(BaseModel):
     default_upload_filename: str = "recording.webm"
     supported_languages: list[SupportedLanguage] = Field(default_factory=list)
     supported_model_sizes: list[SupportedModelSize] = Field(default_factory=list)
+    parakeet_chunk_duration_seconds: float = 120.0
+    parakeet_overlap_duration_seconds: float = 15.0
+    cohere_max_new_tokens: int = 1024
+    cohere_execution_provider: Literal["auto", "coreml", "cpu"] = "auto"
     vibevoice_device: str = "auto"
     vibevoice_dtype: str = "auto"
     vibevoice_attention: str = "auto"
@@ -85,6 +94,15 @@ class TranscriptionConfig(BaseModel):
         if self.upload_chunk_size_mb > self.max_upload_size_mb:
             msg = (
                 "upload_chunk_size_mb must be less than or equal to max_upload_size_mb"
+            )
+            raise ValueError(msg)
+        if (
+            self.parakeet_overlap_duration_seconds
+            >= self.parakeet_chunk_duration_seconds
+        ):
+            msg = (
+                "parakeet_overlap_duration_seconds must be less than "
+                "parakeet_chunk_duration_seconds"
             )
             raise ValueError(msg)
         configured_language_codes = {
@@ -160,6 +178,25 @@ class TranscriptionConfig(BaseModel):
     def validate_vibevoice_max_new_tokens(cls, value: int) -> int:
         if value <= 0:
             msg = "vibevoice_max_new_tokens must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @field_validator(
+        "parakeet_chunk_duration_seconds",
+        "parakeet_overlap_duration_seconds",
+    )
+    @classmethod
+    def validate_parakeet_duration(cls, value: float) -> float:
+        if value <= 0:
+            msg = "Parakeet durations must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("cohere_max_new_tokens")
+    @classmethod
+    def validate_cohere_max_new_tokens(cls, value: int) -> int:
+        if not 1 <= value <= 1024:
+            msg = "cohere_max_new_tokens must be between 1 and 1024"
             raise ValueError(msg)
         return value
 

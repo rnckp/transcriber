@@ -19,7 +19,9 @@ from app.config import SupportedModelSize, load_config
 from app.logging import configure_logging
 from app.middleware import UploadSizeLimitMiddleware
 from app.models import ApiError, ErrorResponse
+from app.services.cohere_onnx import CohereOnnxService
 from app.services.mlx_whisper import MlxWhisperService
+from app.services.parakeet_mlx import ParakeetMlxService
 from app.services.transcription_router import TranscriptionRouterService
 from app.services.vibevoice_asr import VibeVoiceASRService
 
@@ -34,7 +36,9 @@ configure_logging(config.logging.level)
 service = TranscriptionRouterService(
     config=config.transcription,
     backends={
+        "cohere_onnx": CohereOnnxService(config.transcription),
         "mlx_whisper": MlxWhisperService(config.transcription),
+        "parakeet_mlx": ParakeetMlxService(config.transcription),
         "vibevoice_asr": VibeVoiceASRService(config.transcription),
     },
 )

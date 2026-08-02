@@ -8,7 +8,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/rnckp/transcriber.svg)](https://github.com/rnckp/transcriber/stargazers)
 <a href="https://github.com/astral-sh/ruff"><img alt="linting - Ruff" class="off-glb" loading="lazy" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
 
-Local browser-based transcription app for Apple Silicon Macs. It serves a FastAPI backend and vanilla HTML/CSS/JS frontend, then transcribes audio locally with `mlx-whisper` or the optional Microsoft VibeVoice ASR backend for diarized output.
+Local browser-based transcription app for Apple Silicon Macs. It serves a FastAPI backend and vanilla HTML/CSS/JS frontend, then transcribes audio locally with MLX Whisper, NVIDIA Parakeet on MLX, Cohere Transcribe on ONNX Runtime/Core ML, or the optional Microsoft VibeVoice ASR backend for diarized output.
 
 ![Transcriber UI](imgs/app_ui.png)
 
@@ -44,9 +44,12 @@ Configured model options live in `config.yaml`:
 - `tiny`, `base`, `small`, `medium`: progressively larger multilingual Whisper models optimized for Apple Silicon through MLX
 - `large` (Large v3 Turbo), `large-v2`, and `large-v3`: higher-accuracy multilingual MLX Whisper options
 - `distil-large-v3-en`: a faster English-only Distil-Whisper model; selecting it limits the language picker to English
+- `parakeet-v3`: NVIDIA Parakeet TDT 0.6B V3, converted to MLX for fast multilingual transcription on Apple Silicon
+- `parakeet-v2-en`: the English-only NVIDIA Parakeet TDT 0.6B V2 MLX checkpoint
+- `cohere-transcribe-int8`: Cohere Transcribe 03-2026 using the approximately 2.7 GB INT8 ONNX export and Core ML acceleration when available
 - `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local vendored VibeVoice package
 
-Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between MLX Whisper and VibeVoice automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
+Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between backend families automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. Parakeet uses MLX/Metal; Cohere prefers ONNX Runtime's Core ML execution provider and falls back to its optimized ARM CPU provider. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
 
 ## API
 
@@ -92,6 +95,9 @@ Edit `config.yaml` for runtime settings:
 - `transcription.upload_chunk_size_mb`: temp-file streaming chunk size
 - `transcription.supported_languages`: language picker and backend validation
 - `transcription.supported_model_sizes`: model picker, repo ids, backend routing, and optional per-model `language_codes`
+- `transcription.parakeet_*`: long-audio chunk and overlap durations for Parakeet
+- `transcription.cohere_max_new_tokens`: Cohere decoder limit, capped by the exported model's 1024-token context
+- `transcription.cohere_execution_provider`: `auto`, `coreml`, or `cpu`; `auto` prefers Core ML on macOS
 - `transcription.vibevoice_*`: VibeVoice device, dtype, attention mode, and generation settings
 - `logging.level`: structured JSON log level
 - `ui.*`: browser labels, status messages, and progress timing heuristics

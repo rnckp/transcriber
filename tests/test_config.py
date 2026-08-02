@@ -75,6 +75,10 @@ ui:
     assert config.transcription.vibevoice_do_sample is False
     assert config.transcription.vibevoice_num_beams == 1
     assert config.transcription.vibevoice_repetition_penalty == 1.0
+    assert config.transcription.parakeet_chunk_duration_seconds == 120.0
+    assert config.transcription.parakeet_overlap_duration_seconds == 15.0
+    assert config.transcription.cohere_max_new_tokens == 1024
+    assert config.transcription.cohere_execution_provider == "auto"
     assert config.transcription.upload_chunk_size_mb == 2
     assert config.transcription.default_upload_filename == "capture.webm"
     assert config.ui.copy_feedback_ms == 1200
@@ -115,6 +119,42 @@ logging:
     with pytest.raises(
         ValidationError,
         match="upload_chunk_size_mb must be less than or equal to max_upload_size_mb",
+    ):
+        load_config(config_file)
+
+
+def test_load_config_rejects_parakeet_overlap_not_smaller_than_chunk(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        """
+server:
+  host: "127.0.0.1"
+  port: 8000
+transcription:
+  parakeet_chunk_duration_seconds: 30
+  parakeet_overlap_duration_seconds: 30
+  supported_languages:
+    - code: "en"
+      label: "English"
+  supported_model_sizes:
+    - id: "parakeet-v2-en"
+      label: "Parakeet"
+      model_name: "mlx-community/parakeet-tdt-0.6b-v2"
+      backend: "parakeet_mlx"
+logging:
+  level: "INFO"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match=(
+            "parakeet_overlap_duration_seconds must be less than "
+            "parakeet_chunk_duration_seconds"
+        ),
     ):
         load_config(config_file)
 

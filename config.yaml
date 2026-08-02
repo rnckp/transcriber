@@ -38,6 +38,20 @@ transcription:
       label: "Distil-Whisper Large v3 (English)"
       model_name: "mlx-community/distil-whisper-large-v3"
       language_codes: ["en"]
+    - id: "parakeet-v3"
+      label: "NVIDIA Parakeet TDT 0.6B V3"
+      model_name: "mlx-community/parakeet-tdt-0.6b-v3"
+      backend: "parakeet_mlx"
+    - id: "parakeet-v2-en"
+      label: "NVIDIA Parakeet TDT 0.6B V2 (English)"
+      model_name: "mlx-community/parakeet-tdt-0.6b-v2"
+      backend: "parakeet_mlx"
+      language_codes: ["en"]
+    - id: "cohere-transcribe-int8"
+      label: "Cohere Transcribe INT8"
+      model_name: "smcleod/cohere-transcribe-03-2026-int8"
+      backend: "cohere_onnx"
+      language_codes: ["de", "en"]
     - id: "vibevoice-7b"
       label: "VibeVoice ASR 7B"
       model_name: "microsoft/VibeVoice-ASR"
@@ -51,6 +65,10 @@ transcription:
   vibevoice_do_sample: false
   vibevoice_num_beams: 1
   vibevoice_repetition_penalty: 1.0
+  parakeet_chunk_duration_seconds: 120.0
+  parakeet_overlap_duration_seconds: 15.0
+  cohere_max_new_tokens: 1024
+  cohere_execution_provider: "auto"
 
 logging:
   level: "INFO"
@@ -66,6 +84,9 @@ ui:
     large-v2: 2.0
     large-v3: 2.0
     distil-large-v3-en: 0.8
+    parakeet-v3: 0.25
+    parakeet-v2-en: 0.25
+    cohere-transcribe-int8: 0.8
     vibevoice-7b: 2.6
   progress_default_model_factor: 1.0
   progress_default_audio_seconds: 30.0
