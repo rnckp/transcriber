@@ -119,77 +119,12 @@ def test_cohere_transcribe_loads_audio_at_16khz(tmp_path: Path) -> None:
     decode.assert_called_once_with(backend, audio, "de")
 
 
-def test_cohere_auto_provider_retries_coreml_failure_on_cpu(tmp_path: Path) -> None:
-    service = CohereOnnxService(_config(tmp_path))
-    coreml_backend = _backend()
-    cpu_backend = _backend()
-    audio = np.zeros(32_000, dtype=np.float32)
-
-    with (
-        patch.object(service, "_get_or_load_backend", return_value=coreml_backend),
-        patch("app.services.cohere_onnx.librosa.load", return_value=(audio, 16_000)),
-        patch.object(
-            service,
-            "_replace_backend_with_cpu",
-            return_value=cpu_backend,
-        ) as replace_backend,
-        patch.object(
-            service,
-            "_decode",
-            side_effect=[
-                RuntimeError("CoreMLExecutionProvider: Error in building plan."),
-                "Hallo Welt",
-            ],
-        ) as decode,
-    ):
-        result = service.transcribe(
-            tmp_path / "audio.m4a",
-            "de",
-            "cohere-transcribe-int8",
-        )
-
-    assert result.transcript == "Hallo Welt"
-    replace_backend.assert_called_once_with(
-        "cohere-transcribe-int8",
-        "smcleod/cohere-transcribe-03-2026-int8",
-    )
-    assert decode.call_args_list == [
-        ((coreml_backend, audio, "de"),),
-        ((cpu_backend, audio, "de"),),
-    ]
-
-
-def test_cohere_cpu_replacement_replaces_cached_coreml_backend(tmp_path: Path) -> None:
-    service = CohereOnnxService(_config(tmp_path))
-    original_backend = _backend()
-    cpu_backend = _backend()
-    service._backends["cohere-transcribe-int8"] = original_backend
-
-    with patch.object(service, "_load_backend", return_value=cpu_backend) as load:
-        result = service._replace_backend_with_cpu(
-            "cohere-transcribe-int8",
-            "smcleod/cohere-transcribe-03-2026-int8",
-        )
-
-    assert result is cpu_backend
-    assert service._backends["cohere-transcribe-int8"] is cpu_backend
-    load.assert_called_once_with(
-        "cohere-transcribe-int8",
-        "smcleod/cohere-transcribe-03-2026-int8",
-        providers=["CPUExecutionProvider"],
-    )
-
-
-def test_cohere_auto_provider_prefers_coreml(tmp_path: Path) -> None:
+def test_cohere_auto_provider_uses_cpu_for_compatibility(tmp_path: Path) -> None:
     service = CohereOnnxService(_config(tmp_path))
 
-    with patch(
-        "app.services.cohere_onnx.ort.get_available_providers",
-        return_value=["CoreMLExecutionProvider", "CPUExecutionProvider"],
-    ):
-        providers = service._execution_providers()
+    providers = service._execution_providers()
 
-    assert providers == ["CoreMLExecutionProvider", "CPUExecutionProvider"]
+    assert providers == ["CPUExecutionProvider"]
 
 
 def test_cohere_required_coreml_provider_fails_clearly(tmp_path: Path) -> None:

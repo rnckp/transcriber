@@ -46,10 +46,10 @@ Configured model options live in `config.yaml`:
 - `distil-large-v3-en`: a faster English-only Distil-Whisper model; selecting it limits the language picker to English
 - `parakeet-v3`: NVIDIA Parakeet TDT 0.6B V3, converted to MLX for fast multilingual transcription on Apple Silicon
 - `parakeet-v2-en`: the English-only NVIDIA Parakeet TDT 0.6B V2 MLX checkpoint
-- `cohere-transcribe-int8`: Cohere Transcribe 03-2026 using the approximately 2.7 GB INT8 ONNX export and Core ML acceleration when available
+- `cohere-transcribe-int8`: Cohere Transcribe 03-2026 using the approximately 2.7 GB INT8 ONNX export and ONNX Runtime's ARM CPU provider
 - `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local vendored VibeVoice package
 
-Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between backend families automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. Parakeet uses MLX/Metal; Cohere prefers ONNX Runtime's Core ML execution provider and, in `auto` mode, retries on its optimized ARM CPU provider if Core ML cannot execute the model. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
+Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between backend families automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. Parakeet uses MLX/Metal; Cohere uses ONNX Runtime's optimized ARM CPU provider by default because the current INT8 export is incompatible with Core ML at runtime. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
 
 ## API
 
@@ -97,7 +97,7 @@ Edit `config.yaml` for runtime settings:
 - `transcription.supported_model_sizes`: model picker, repo ids, backend routing, and optional per-model `language_codes`
 - `transcription.parakeet_*`: long-audio chunk and overlap durations for Parakeet
 - `transcription.cohere_max_new_tokens`: Cohere decoder limit, capped by the exported model's 1024-token context
-- `transcription.cohere_execution_provider`: `auto`, `coreml`, or `cpu`; `auto` prefers Core ML on macOS
+- `transcription.cohere_execution_provider`: `auto`, `coreml`, or `cpu`; `auto` and `cpu` use the compatible CPU provider, while `coreml` is an explicit experimental override
 - `transcription.vibevoice_*`: VibeVoice device, dtype, attention mode, and generation settings
 - `logging.level`: structured JSON log level
 - `ui.*`: browser labels, status messages, and progress timing heuristics
