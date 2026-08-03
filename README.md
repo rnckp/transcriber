@@ -49,7 +49,7 @@ Configured model options live in `config.yaml`:
 - `cohere-transcribe-int8`: Cohere Transcribe 03-2026 using the approximately 2.7 GB INT8 ONNX export and Core ML acceleration when available
 - `vibevoice-7b`: VibeVoice ASR with speaker segments, loaded through the local vendored VibeVoice package
 
-Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between backend families automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. Parakeet uses MLX/Metal; Cohere prefers ONNX Runtime's Core ML execution provider and falls back to its optimized ARM CPU provider. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
+Models download on first use and remain cached on disk. Consecutive runs with the same backend reuse the loaded model in memory. Switching between backend families automatically unloads the previous backend to protect Apple unified memory, so the first run after switching back must reload that model. Parakeet uses MLX/Metal; Cohere prefers ONNX Runtime's Core ML execution provider and, in `auto` mode, retries on its optimized ARM CPU provider if Core ML cannot execute the model. VibeVoice also downloads its Hugging Face model on first real use and can require substantial memory; keep `transcription.vibevoice_max_new_tokens` conservative unless you know the target machine can handle more.
 
 ## API
 

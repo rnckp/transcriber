@@ -1,4 +1,5 @@
 import gc
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -29,6 +30,10 @@ PUNCTUATION = "<|pnc|>"
 NO_TIMESTAMPS = "<|notimestamp|>"
 INVERSE_TEXT_NORMALIZATION = "<|itn|>"
 END_OF_TEXT = "<|endoftext|>"
+CPU_EXECUTION_PROVIDER = "CPUExecutionProvider"
+COREML_EXECUTION_PROVIDER = "CoreMLExecutionProvider"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -85,16 +90,16 @@ class CohereOnnxService:
         requested_provider = self._config.cohere_execution_provider
         available = set(ort.get_available_providers())
         if requested_provider == "cpu":
-            return ["CPUExecutionProvider"]
+            return [CPU_EXECUTION_PROVIDER]
         if requested_provider == "coreml":
-            if "CoreMLExecutionProvider" not in available:
+            if COREML_EXECUTION_PROVIDER not in available:
                 raise TranscriptionError(
                     "Core ML execution was requested but is unavailable in ONNX Runtime."
                 )
-            return ["CoreMLExecutionProvider", "CPUExecutionProvider"]
-        if "CoreMLExecutionProvider" in available:
-            return ["CoreMLExecutionProvider", "CPUExecutionProvider"]
-        return ["CPUExecutionProvider"]
+            return [COREML_EXECUTION_PROVIDER, CPU_EXECUTION_PROVIDER]
+        if COREML_EXECUTION_PROVIDER in available:
+            return [COREML_EXECUTION_PROVIDER, CPU_EXECUTION_PROVIDER]
+        return [CPU_EXECUTION_PROVIDER]
 
     def _load_vocabulary(
         self,
@@ -115,9 +120,16 @@ class CohereOnnxService:
         id_to_token = {token_id: token for token, token_id in token_to_id.items()}
         return token_to_id, id_to_token
 
-    def _load_backend(self, model_id: str, repo_id: str) -> CohereOnnxBackend:
+    def _load_backend(
+        self,
+        model_id: str,
+        repo_id: str,
+        providers: list[str] | None = None,
+    ) -> CohereOnnxBackend:
         model_directory = self._model_directory(model_id, repo_id)
-        providers = self._execution_providers()
+        session_providers = (
+            providers if providers is not None else self._execution_providers()
+        )
         token_to_id, id_to_token = self._load_vocabulary(model_directory / "tokens.txt")
         required_tokens = {
             START_OF_TRANSCRIPT,
@@ -135,11 +147,11 @@ class CohereOnnxService:
         return CohereOnnxBackend(
             encoder=ort.InferenceSession(
                 model_directory / "cohere-encoder.int8.onnx",
-                providers=providers,
+                providers=session_providers,
             ),
             decoder=ort.InferenceSession(
                 model_directory / "cohere-decoder.int8.onnx",
-                providers=providers,
+                providers=session_providers,
             ),
             token_to_id=token_to_id,
             id_to_token=id_to_token,
@@ -159,6 +171,29 @@ class CohereOnnxService:
                 backend = self._load_backend(model_id, configured_model.model_name)
                 self._backends[model_id] = backend
         return backend
+
+    def _replace_backend_with_cpu(
+        self,
+        model_id: str,
+        repo_id: str,
+    ) -> CohereOnnxBackend:
+        with self._backend_lock:
+            self._backends.pop(model_id, None)
+        gc.collect()
+        backend = self._load_backend(
+            model_id,
+            repo_id,
+            providers=[CPU_EXECUTION_PROVIDER],
+        )
+        with self._backend_lock:
+            self._backends[model_id] = backend
+        return backend
+
+    def _should_retry_with_cpu(self, exc: Exception) -> bool:
+        return (
+            self._config.cohere_execution_provider == "auto"
+            and COREML_EXECUTION_PROVIDER in str(exc)
+        )
 
     def _decode(
         self,
@@ -241,6 +276,7 @@ class CohereOnnxService:
         model_size: str,
     ) -> TranscriptionResult:
         self._validate_request(language, model_size)
+        configured_model = self._model_map[model_size]
 
         try:
             backend = self._get_or_load_backend(model_size)
@@ -256,7 +292,21 @@ class CohereOnnxService:
                     mono=True,
                     dtype=np.float32,
                 )
-                transcript = self._decode(backend, audio, language)
+                try:
+                    transcript = self._decode(backend, audio, language)
+                except Exception as exc:
+                    if not self._should_retry_with_cpu(exc):
+                        raise
+                    logger.warning(
+                        "Cohere Core ML inference failed; retrying with CPU: %s",
+                        exc,
+                    )
+                    del backend
+                    backend = self._replace_backend_with_cpu(
+                        model_size,
+                        configured_model.model_name,
+                    )
+                    transcript = self._decode(backend, audio, language)
             finally:
                 inference_lock.release()
         except (
