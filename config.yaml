@@ -126,5 +126,6 @@ ui:
   progress_waiting_message: "Waiting for audio."
   progress_preparing_message: "Preparing audio..."
   progress_complete_message: "Complete"
-  progress_transcribing_message: "Transcribing audio locally, about {remaining} time left"
+  progress_transcribing_message: "Transcribing locally · {elapsed} elapsed · about {remaining} left"
+  progress_long_running_message: "Still transcribing locally · {elapsed} elapsed"
   progress_uploading_message: "Uploading audio, {percent} complete"

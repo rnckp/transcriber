@@ -90,6 +90,35 @@ def test_cohere_decode_runs_encoder_and_cached_decoder(tmp_path: Path) -> None:
     assert offsets == [0, 5, 6]
 
 
+def test_cohere_decode_keeps_prompt_within_decoder_context(tmp_path: Path) -> None:
+    backend = _backend()
+    cross_k = np.zeros((8, 1, 2, 1024), dtype=np.float32)
+    cross_v = np.zeros((8, 1, 2, 1024), dtype=np.float32)
+    backend.encoder.run.return_value = [cross_k, cross_v]
+    logits = np.zeros((1, 1, 300), dtype=np.float32)
+    logits[0, 0, 256] = 1.0
+
+    def decoder_run(output_names, inputs):  # type: ignore[no-untyped-def]
+        del output_names
+        return [
+            logits,
+            inputs["in_n_layer_self_k_cache"],
+            inputs["in_n_layer_self_v_cache"],
+        ]
+
+    backend.decoder.run.side_effect = decoder_run
+    service = CohereOnnxService(_config(tmp_path))
+
+    service._decode(
+        backend,
+        np.asarray([0.1, -0.1], dtype=np.float32),
+        "de",
+    )
+
+    assert backend.decoder.run.call_count == 1020
+    assert int(backend.decoder.run.call_args.args[1]["offset"]) == 1023
+
+
 def test_cohere_transcribe_loads_audio_at_16khz(tmp_path: Path) -> None:
     service = CohereOnnxService(_config(tmp_path))
     backend = _backend()

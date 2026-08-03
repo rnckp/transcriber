@@ -415,7 +415,10 @@ def test_static_frontend_reports_file_processing_progress() -> None:
     assert "estimateProcessingSeconds" in app_js
     assert "setProgress" in app_js
     assert "progressTranscribingMessage" in app_js
+    assert "progressLongRunningMessage" in app_js
     assert "progressMinVisiblePercent" in app_js
+    assert 'classList.add("is-active")' in app_js
+    assert "window.setInterval(updateTimer, 1000)" in app_js
     assert "syncModelLanguageCompatibility" in app_js
     assert "showModelPreparationNote" in app_js
     assert "hideModelPreparationNote" in app_js

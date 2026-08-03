@@ -307,7 +307,10 @@ class UiConfig(BaseModel):
     progress_preparing_message: str = "Preparing audio..."
     progress_complete_message: str = "Complete"
     progress_transcribing_message: str = (
-        "Transcribing audio locally, about {remaining} time left"
+        "Transcribing locally · {elapsed} elapsed · about {remaining} left"
+    )
+    progress_long_running_message: str = (
+        "Still transcribing locally · {elapsed} elapsed"
     )
     progress_uploading_message: str = "Uploading audio, {percent} complete"
 
@@ -405,6 +408,7 @@ class UiConfig(BaseModel):
         "progress_preparing_message",
         "progress_complete_message",
         "progress_transcribing_message",
+        "progress_long_running_message",
         "progress_uploading_message",
     )
     @classmethod

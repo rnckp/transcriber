@@ -306,13 +306,14 @@ function startEstimatedProcessingProgress(estimatedSeconds) {
       + phaseProgress * APP_CONFIG.progressTranscriptionFraction;
     const remainingSeconds = Math.max(0, estimatedSeconds - elapsedSeconds);
 
-    setProgress(
-      progress,
-      APP_CONFIG.progressTranscribingMessage.replace(
-        "{remaining}",
-        formatRemainingTime(remainingSeconds),
-      ),
-    );
+    const elapsed = formatRemainingTime(elapsedSeconds);
+    const label = elapsedSeconds < estimatedSeconds
+      ? APP_CONFIG.progressTranscribingMessage
+        .replace("{elapsed}", elapsed)
+        .replace("{remaining}", formatRemainingTime(remainingSeconds))
+      : APP_CONFIG.progressLongRunningMessage.replace("{elapsed}", elapsed);
+
+    setProgress(progress, label);
   };
 
   updateProgress();
@@ -324,8 +325,10 @@ function restoreInteractiveState(
   timerLabel,
   { resetButtonDisabled = false } = {},
 ) {
+  clearTimer();
   state.isRecording = false;
   state.isProcessing = false;
+  elements.processingProgress.classList.remove("is-active");
   hideModelPreparationNote();
   elements.recordButton.disabled = false;
   elements.recordButton.textContent = APP_CONFIG.recordButtonLabel;
@@ -420,6 +423,11 @@ function resetUi() {
 
 function setProcessingState(statusMessage) {
   state.isProcessing = true;
+  state.startedAt = Date.now();
+  clearTimer();
+  updateTimer();
+  state.timerId = window.setInterval(updateTimer, 1000);
+  elements.processingProgress.classList.add("is-active");
   elements.recordButton.disabled = true;
   elements.resetButton.disabled = true;
   setSelectorsDisabled(true);

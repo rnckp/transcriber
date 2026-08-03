@@ -1,4 +1,5 @@
 import gc
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -31,6 +32,8 @@ INVERSE_TEXT_NORMALIZATION = "<|itn|>"
 END_OF_TEXT = "<|endoftext|>"
 CPU_EXECUTION_PROVIDER = "CPUExecutionProvider"
 COREML_EXECUTION_PROVIDER = "CoreMLExecutionProvider"
+DECODER_CONTEXT_SIZE = 1024
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -189,7 +192,13 @@ class CohereOnnxService:
         generated_token_ids: list[int] = []
         end_token_id = backend.token_to_id[END_OF_TEXT]
 
-        for _ in range(self._config.cohere_max_new_tokens):
+        available_decoder_positions = DECODER_CONTEXT_SIZE - len(prompt) + 1
+        max_new_tokens = min(
+            self._config.cohere_max_new_tokens,
+            available_decoder_positions,
+        )
+        reached_end_token = False
+        for _ in range(max_new_tokens):
             logits, cache_k, cache_v = backend.decoder.run(
                 None,
                 {
@@ -203,10 +212,23 @@ class CohereOnnxService:
             )
             next_token_id = int(np.argmax(logits[0, -1, :]))
             if next_token_id == end_token_id:
+                reached_end_token = True
                 break
             generated_token_ids.append(next_token_id)
+            if len(generated_token_ids) % 128 == 0:
+                logger.info(
+                    "Cohere decoder generated %d/%d tokens",
+                    len(generated_token_ids),
+                    max_new_tokens,
+                )
             offset += current_tokens.shape[1]
             current_tokens = np.asarray([[next_token_id]], dtype=np.int64)
+
+        if not reached_end_token and len(generated_token_ids) == max_new_tokens:
+            logger.warning(
+                "Cohere decoder reached its %d-token generation limit",
+                max_new_tokens,
+            )
 
         pieces = [
             backend.id_to_token[token_id]
@@ -256,10 +278,32 @@ class CohereOnnxService:
                 chunk_size = int(
                     self._config.cohere_chunk_duration_seconds * sample_rate
                 )
-                chunk_transcripts = [
-                    self._decode(backend, audio[start : start + chunk_size], language)
-                    for start in range(0, len(audio), chunk_size)
-                ]
+                chunk_starts = range(0, len(audio), chunk_size)
+                chunk_count = len(chunk_starts)
+                logger.info(
+                    "Starting Cohere transcription of %.1f seconds in %d chunk(s)",
+                    len(audio) / sample_rate,
+                    chunk_count,
+                )
+                chunk_transcripts: list[str] = []
+                for chunk_index, start in enumerate(chunk_starts, start=1):
+                    logger.info(
+                        "Transcribing Cohere chunk %d/%d",
+                        chunk_index,
+                        chunk_count,
+                    )
+                    chunk_transcripts.append(
+                        self._decode(
+                            backend,
+                            audio[start : start + chunk_size],
+                            language,
+                        )
+                    )
+                    logger.info(
+                        "Completed Cohere chunk %d/%d",
+                        chunk_index,
+                        chunk_count,
+                    )
                 transcript = " ".join(filter(None, chunk_transcripts))
             finally:
                 inference_lock.release()

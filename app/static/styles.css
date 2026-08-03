@@ -218,6 +218,12 @@ h2 {
 
 .timer-card.is-busy .timer-state::before {
   background: var(--accent);
+  animation: processing-pulse 1.4s ease-out infinite;
+}
+
+.timer-card.is-busy #timer {
+  color: var(--accent-strong);
+  animation: processing-timer-pulse 1.6s ease-in-out infinite;
 }
 
 #timer {
@@ -459,6 +465,11 @@ button:disabled {
   transition: width 240ms ease;
 }
 
+.progress-panel.is-active #progress-fill {
+  background-size: 200% 100%;
+  animation: progress-shimmer 1.4s linear infinite;
+}
+
 .transcript-panel {
   margin-top: 16px;
   padding: 18px;
@@ -541,6 +552,41 @@ textarea {
   50% {
     transform: scale(1.03);
     opacity: 0.84;
+  }
+}
+
+@keyframes processing-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(43, 111, 232, 0.34);
+  }
+
+  70% {
+    box-shadow: 0 0 0 9px rgba(43, 111, 232, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(43, 111, 232, 0);
+  }
+}
+
+@keyframes processing-timer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.68;
+  }
+}
+
+@keyframes progress-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
   }
 }
 

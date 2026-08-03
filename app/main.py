@@ -162,6 +162,7 @@ async def index(request: Request) -> HTMLResponse:
             "progressPreparingMessage": runtime_config.ui.progress_preparing_message,
             "progressCompleteMessage": runtime_config.ui.progress_complete_message,
             "progressTranscribingMessage": runtime_config.ui.progress_transcribing_message,
+            "progressLongRunningMessage": runtime_config.ui.progress_long_running_message,
             "progressUploadingMessage": runtime_config.ui.progress_uploading_message,
             "defaultUploadFilename": runtime_config.transcription.default_upload_filename,
             "modelLanguageCodes": {
