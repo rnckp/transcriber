@@ -77,6 +77,7 @@ ui:
     assert config.transcription.vibevoice_repetition_penalty == 1.0
     assert config.transcription.parakeet_chunk_duration_seconds == 120.0
     assert config.transcription.parakeet_overlap_duration_seconds == 15.0
+    assert config.transcription.cohere_chunk_duration_seconds == 300.0
     assert config.transcription.cohere_max_new_tokens == 1024
     assert config.transcription.cohere_execution_provider == "auto"
     assert config.transcription.upload_chunk_size_mb == 2

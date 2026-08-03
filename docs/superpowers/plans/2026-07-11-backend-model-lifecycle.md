@@ -302,42 +302,40 @@ Initialize lifecycle state in `__init__`:
 Replace the final dispatch with:
 
 ```python
-        previous_backend_name: str | None = None
+previous_backend_name: str | None = None
+with self._lifecycle_condition:
+    while self._switching or (
+        self._active_backend_name not in {None, backend_name} and self._active_calls > 0
+    ):
+        self._lifecycle_condition.wait()
+
+    if self._active_backend_name != backend_name:
+        self._switching = True
+        previous_backend_name = self._active_backend_name
+
+if previous_backend_name is not None:
+    try:
+        self._backends[previous_backend_name].release()
+    except Exception as exc:
         with self._lifecycle_condition:
-            while self._switching or (
-                self._active_backend_name not in {None, backend_name}
-                and self._active_calls > 0
-            ):
-                self._lifecycle_condition.wait()
-
-            if self._active_backend_name != backend_name:
-                self._switching = True
-                previous_backend_name = self._active_backend_name
-
-        if previous_backend_name is not None:
-            try:
-                self._backends[previous_backend_name].release()
-            except Exception as exc:
-                with self._lifecycle_condition:
-                    self._switching = False
-                    self._lifecycle_condition.notify_all()
-                raise TranscriptionError(
-                    "Failed to release transcription backend "
-                    f"{previous_backend_name}: {exc}"
-                ) from exc
-
-        with self._lifecycle_condition:
-            self._active_backend_name = backend_name
             self._switching = False
-            self._active_calls += 1
             self._lifecycle_condition.notify_all()
+        raise TranscriptionError(
+            f"Failed to release transcription backend {previous_backend_name}: {exc}"
+        ) from exc
 
-        try:
-            return backend.transcribe(audio_path, language, model_size)
-        finally:
-            with self._lifecycle_condition:
-                self._active_calls -= 1
-                self._lifecycle_condition.notify_all()
+with self._lifecycle_condition:
+    self._active_backend_name = backend_name
+    self._switching = False
+    self._active_calls += 1
+    self._lifecycle_condition.notify_all()
+
+try:
+    return backend.transcribe(audio_path, language, model_size)
+finally:
+    with self._lifecycle_condition:
+        self._active_calls -= 1
+        self._lifecycle_condition.notify_all()
 ```
 
 - [ ] **Step 5: Run router tests and verify GREEN**

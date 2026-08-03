@@ -116,7 +116,43 @@ def test_cohere_transcribe_loads_audio_at_16khz(tmp_path: Path) -> None:
         mono=True,
         dtype=np.float32,
     )
-    decode.assert_called_once_with(backend, audio, "de")
+    decode.assert_called_once()
+    decode_backend, decode_audio, decode_language = decode.call_args.args
+    assert decode_backend is backend
+    np.testing.assert_array_equal(decode_audio, audio)
+    assert decode_language == "de"
+
+
+def test_cohere_transcribe_splits_audio_to_fit_encoder_context(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    config.cohere_chunk_duration_seconds = 2.0
+    service = CohereOnnxService(config)
+    backend = _backend()
+    audio = np.zeros(5 * 16_000, dtype=np.float32)
+
+    with (
+        patch.object(service, "_get_or_load_backend", return_value=backend),
+        patch("app.services.cohere_onnx.librosa.load", return_value=(audio, 16_000)),
+        patch.object(
+            service,
+            "_decode",
+            side_effect=["first", "second", "third"],
+        ) as decode,
+    ):
+        result = service.transcribe(
+            tmp_path / "audio.m4a",
+            "de",
+            "cohere-transcribe-int8",
+        )
+
+    assert result.transcript == "first second third"
+    assert [call.args[1].shape[0] for call in decode.call_args_list] == [
+        32_000,
+        32_000,
+        16_000,
+    ]
 
 
 def test_cohere_auto_provider_uses_cpu_for_compatibility(tmp_path: Path) -> None:

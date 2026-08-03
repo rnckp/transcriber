@@ -61,6 +61,7 @@ class TranscriptionConfig(BaseModel):
     supported_model_sizes: list[SupportedModelSize] = Field(default_factory=list)
     parakeet_chunk_duration_seconds: float = 120.0
     parakeet_overlap_duration_seconds: float = 15.0
+    cohere_chunk_duration_seconds: float = 300.0
     cohere_max_new_tokens: int = 1024
     cohere_execution_provider: Literal["auto", "coreml", "cpu"] = "auto"
     vibevoice_device: str = "auto"
@@ -189,6 +190,14 @@ class TranscriptionConfig(BaseModel):
     def validate_parakeet_duration(cls, value: float) -> float:
         if value <= 0:
             msg = "Parakeet durations must be greater than 0"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("cohere_chunk_duration_seconds")
+    @classmethod
+    def validate_cohere_chunk_duration(cls, value: float) -> float:
+        if not 0 < value <= 600:
+            msg = "cohere_chunk_duration_seconds must be between 0 and 600"
             raise ValueError(msg)
         return value
 

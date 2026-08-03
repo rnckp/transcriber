@@ -67,6 +67,7 @@ transcription:
   vibevoice_repetition_penalty: 1.0
   parakeet_chunk_duration_seconds: 120.0
   parakeet_overlap_duration_seconds: 15.0
+  cohere_chunk_duration_seconds: 300.0
   cohere_max_new_tokens: 1024
   cohere_execution_provider: "auto"
 

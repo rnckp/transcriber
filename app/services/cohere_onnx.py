@@ -253,7 +253,14 @@ class CohereOnnxService:
                     mono=True,
                     dtype=np.float32,
                 )
-                transcript = self._decode(backend, audio, language)
+                chunk_size = int(
+                    self._config.cohere_chunk_duration_seconds * sample_rate
+                )
+                chunk_transcripts = [
+                    self._decode(backend, audio[start : start + chunk_size], language)
+                    for start in range(0, len(audio), chunk_size)
+                ]
+                transcript = " ".join(filter(None, chunk_transcripts))
             finally:
                 inference_lock.release()
         except (

@@ -96,6 +96,7 @@ Edit `config.yaml` for runtime settings:
 - `transcription.supported_languages`: language picker and backend validation
 - `transcription.supported_model_sizes`: model picker, repo ids, backend routing, and optional per-model `language_codes`
 - `transcription.parakeet_*`: long-audio chunk and overlap durations for Parakeet
+- `transcription.cohere_chunk_duration_seconds`: Cohere audio chunk duration, capped at 10 minutes to stay within the exported encoder context
 - `transcription.cohere_max_new_tokens`: Cohere decoder limit, capped by the exported model's 1024-token context
 - `transcription.cohere_execution_provider`: `auto`, `coreml`, or `cpu`; `auto` and `cpu` use the compatible CPU provider, while `coreml` is an explicit experimental override
 - `transcription.vibevoice_*`: VibeVoice device, dtype, attention mode, and generation settings
