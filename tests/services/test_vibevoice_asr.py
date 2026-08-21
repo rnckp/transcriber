@@ -1,3 +1,4 @@
+import logging
 import sys
 import types
 from concurrent.futures import ThreadPoolExecutor
@@ -8,8 +9,47 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.config import SupportedLanguage, SupportedModelSize, TranscriptionConfig
-from app.services.vibevoice_asr import VibeVoiceASRService
 from app.services.transcription import TranscriptionBusyError
+from app.services.vibevoice_asr import (
+    VibeVoiceASRService,
+    _suppress_known_checkpoint_warnings,
+)
+
+
+def test_vibevoice_suppresses_only_known_checkpoint_warnings(caplog) -> None:
+    processor_logger = logging.getLogger("vibevoice.processor.vibevoice_asr_processor")
+    tokenizer_logger = logging.getLogger("transformers.tokenization_utils_base")
+
+    with caplog.at_level(logging.WARNING), _suppress_known_checkpoint_warnings():
+        processor_logger.warning(
+            "Could not load preprocessor_config.json: microsoft/VibeVoice-ASR "
+            "does not appear to have a file named preprocessor_config.json"
+        )
+        processor_logger.warning("Using default configuration")
+        tokenizer_logger.warning(
+            "The tokenizer class you load from this checkpoint is not the same "
+            "type as the class this function is called from."
+        )
+        processor_logger.warning("Unexpected VibeVoice warning")
+
+    assert [record.message for record in caplog.records] == [
+        "Unexpected VibeVoice warning"
+    ]
+
+
+def test_vibevoice_keeps_unexpected_preprocessor_errors_visible(caplog) -> None:
+    processor_logger = logging.getLogger("vibevoice.processor.vibevoice_asr_processor")
+
+    with caplog.at_level(logging.WARNING), _suppress_known_checkpoint_warnings():
+        processor_logger.warning(
+            "Could not load preprocessor_config.json: connection timed out"
+        )
+        processor_logger.warning("Using default configuration")
+
+    assert [record.message for record in caplog.records] == [
+        "Could not load preprocessor_config.json: connection timed out",
+        "Using default configuration",
+    ]
 
 
 def test_release_drops_vibevoice_backends_and_clears_available_mps_cache() -> None:

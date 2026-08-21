@@ -1,4 +1,6 @@
 import gc
+import logging
+from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -12,6 +14,49 @@ from app.services.transcription import (
     UnsupportedLanguageError,
     UnsupportedModelSizeError,
 )
+
+
+class _KnownCheckpointWarningFilter(logging.Filter):
+    """Hide only the two known, harmless warnings from the ASR checkpoint."""
+
+    _MISSING_CONFIG_PREFIX = "Could not load preprocessor_config.json:"
+    _MISSING_CONFIG_DETAIL = (
+        "does not appear to have a file named preprocessor_config.json"
+    )
+    _TOKENIZER_MISMATCH_PREFIX = (
+        "The tokenizer class you load from this checkpoint is not the same type"
+    )
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._expected_default_fallback = False
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        if message.startswith(self._MISSING_CONFIG_PREFIX):
+            self._expected_default_fallback = self._MISSING_CONFIG_DETAIL in message
+            return not self._expected_default_fallback
+        if message == "Using default configuration" and self._expected_default_fallback:
+            self._expected_default_fallback = False
+            return False
+        return not message.startswith(self._TOKENIZER_MISMATCH_PREFIX)
+
+
+@contextmanager
+def _suppress_known_checkpoint_warnings():
+    """Suppress metadata warnings confirmed harmless by upstream issue #369."""
+    warning_filter = _KnownCheckpointWarningFilter()
+    loggers = (
+        logging.getLogger("vibevoice.processor.vibevoice_asr_processor"),
+        logging.getLogger("transformers.tokenization_utils_base"),
+    )
+    for logger in loggers:
+        logger.addFilter(warning_filter)
+    try:
+        yield
+    finally:
+        for logger in loggers:
+            logger.removeFilter(warning_filter)
 
 
 class VibeVoiceASRService:
@@ -99,12 +144,13 @@ class VibeVoiceASRService:
             ) from exc
 
         device = self._detect_device()
-        return VibeVoiceASRInference(
-            model_path=model_name,
-            device=device,
-            dtype=self._resolve_dtype(device),
-            attn_implementation=self._resolve_attention(device),
-        )
+        with _suppress_known_checkpoint_warnings():
+            return VibeVoiceASRInference(
+                model_path=model_name,
+                device=device,
+                dtype=self._resolve_dtype(device),
+                attn_implementation=self._resolve_attention(device),
+            )
 
     def _get_or_load_backend(self, model_size: str) -> Any:
         model = self._model_map.get(model_size)
