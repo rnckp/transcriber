@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.config import AppConfig, load_config
+from app.config import AppConfig, TranscriptionConfig, load_config
 from app.logging import JsonFormatter, configure_logging
 
 
@@ -77,8 +77,8 @@ ui:
     assert config.transcription.vibevoice_repetition_penalty == 1.0
     assert config.transcription.parakeet_chunk_duration_seconds == 120.0
     assert config.transcription.parakeet_overlap_duration_seconds == 15.0
-    assert config.transcription.cohere_chunk_duration_seconds == 300.0
-    assert config.transcription.cohere_max_new_tokens == 1024
+    assert config.transcription.cohere_chunk_duration_seconds == 35.0
+    assert config.transcription.cohere_max_new_tokens == 256
     assert config.transcription.cohere_execution_provider == "auto"
     assert config.transcription.upload_chunk_size_mb == 2
     assert config.transcription.default_upload_filename == "capture.webm"
@@ -91,6 +91,30 @@ ui:
     assert config.ui.save_unavailable_message == "Download not available."
     assert config.ui.audio_file_button_label == "Pick Audio"
     assert config.ui.audio_file_empty_label == "Nothing selected"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        (
+            "cohere_chunk_duration_seconds",
+            36.0,
+            "cohere_chunk_duration_seconds must be between 0 and 35",
+        ),
+        (
+            "cohere_max_new_tokens",
+            257,
+            "cohere_max_new_tokens must be between 1 and 256",
+        ),
+    ],
+)
+def test_cohere_settings_reject_values_above_official_inference_limits(
+    field: str,
+    value: float,
+    message: str,
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        TranscriptionConfig(**{field: value})
 
 
 def test_load_config_rejects_chunk_size_larger_than_max(tmp_path: Path) -> None:

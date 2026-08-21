@@ -90,7 +90,7 @@ def test_cohere_decode_runs_encoder_and_cached_decoder(tmp_path: Path) -> None:
     assert offsets == [0, 5, 6]
 
 
-def test_cohere_decode_keeps_prompt_within_decoder_context(tmp_path: Path) -> None:
+def test_cohere_decode_uses_official_generation_limit(tmp_path: Path) -> None:
     backend = _backend()
     cross_k = np.zeros((8, 1, 2, 1024), dtype=np.float32)
     cross_v = np.zeros((8, 1, 2, 1024), dtype=np.float32)
@@ -115,8 +115,8 @@ def test_cohere_decode_keeps_prompt_within_decoder_context(tmp_path: Path) -> No
         "de",
     )
 
-    assert backend.decoder.run.call_count == 1020
-    assert int(backend.decoder.run.call_args.args[1]["offset"]) == 1023
+    assert backend.decoder.run.call_count == 256
+    assert int(backend.decoder.run.call_args.args[1]["offset"]) == 259
 
 
 def test_cohere_transcribe_loads_audio_at_16khz(tmp_path: Path) -> None:
@@ -152,14 +152,15 @@ def test_cohere_transcribe_loads_audio_at_16khz(tmp_path: Path) -> None:
     assert decode_language == "de"
 
 
-def test_cohere_transcribe_splits_audio_to_fit_encoder_context(
+def test_cohere_transcribe_splits_audio_at_quiet_boundary(
     tmp_path: Path,
 ) -> None:
     config = _config(tmp_path)
-    config.cohere_chunk_duration_seconds = 2.0
+    config.cohere_chunk_duration_seconds = 35.0
     service = CohereOnnxService(config)
     backend = _backend()
-    audio = np.zeros(5 * 16_000, dtype=np.float32)
+    audio = np.ones(50 * 16_000, dtype=np.float32)
+    audio[33 * 16_000 : 34 * 16_000] = 0.0
 
     with (
         patch.object(service, "_get_or_load_backend", return_value=backend),
@@ -167,7 +168,7 @@ def test_cohere_transcribe_splits_audio_to_fit_encoder_context(
         patch.object(
             service,
             "_decode",
-            side_effect=["first", "second", "third"],
+            side_effect=["first", "second"],
         ) as decode,
     ):
         result = service.transcribe(
@@ -176,12 +177,16 @@ def test_cohere_transcribe_splits_audio_to_fit_encoder_context(
             "cohere-transcribe-int8",
         )
 
-    assert result.transcript == "first second third"
-    assert [call.args[1].shape[0] for call in decode.call_args_list] == [
-        32_000,
-        32_000,
-        16_000,
-    ]
+    assert result.transcript == "first second"
+    assert len(decode.call_args_list) == 2
+    first_chunk = decode.call_args_list[0].args[1]
+    second_chunk = decode.call_args_list[1].args[1]
+    assert first_chunk.shape[0] == 33 * 16_000
+    assert second_chunk.shape[0] == 17 * 16_000
+    np.testing.assert_array_equal(
+        np.concatenate([first_chunk, second_chunk]),
+        audio,
+    )
 
 
 def test_cohere_auto_provider_uses_cpu_for_compatibility(tmp_path: Path) -> None:

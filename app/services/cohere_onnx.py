@@ -33,6 +33,8 @@ END_OF_TEXT = "<|endoftext|>"
 CPU_EXECUTION_PROVIDER = "CPUExecutionProvider"
 COREML_EXECUTION_PROVIDER = "CoreMLExecutionProvider"
 DECODER_CONTEXT_SIZE = 1024
+CHUNK_BOUNDARY_SEARCH_SECONDS = 5.0
+MIN_ENERGY_WINDOW_SECONDS = 0.1
 logger = logging.getLogger(__name__)
 
 
@@ -253,6 +255,62 @@ class CohereOnnxService:
                 f"Model {model_id} does not support language: {language}"
             )
 
+    def _find_quietest_split(
+        self,
+        audio: np.ndarray,
+        start: int,
+        end: int,
+        sample_rate: int,
+    ) -> int:
+        energy_window_size = max(
+            1,
+            round(MIN_ENERGY_WINDOW_SECONDS * sample_rate),
+        )
+        if end - start <= energy_window_size:
+            return (start + end) // 2
+
+        quietest_start = start
+        minimum_energy = float("inf")
+        for window_start in range(start, end - energy_window_size, energy_window_size):
+            window = audio[window_start : window_start + energy_window_size]
+            energy = float(np.sqrt(np.mean(window * window)))
+            if energy < minimum_energy:
+                minimum_energy = energy
+                quietest_start = window_start
+        return quietest_start
+
+    def _split_audio(self, audio: np.ndarray, sample_rate: int) -> list[np.ndarray]:
+        chunk_size = max(
+            1,
+            round(self._config.cohere_chunk_duration_seconds * sample_rate),
+        )
+        if len(audio) <= chunk_size:
+            return [audio]
+
+        boundary_search_size = min(
+            max(1, round(CHUNK_BOUNDARY_SEARCH_SECONDS * sample_rate)),
+            max(1, chunk_size // 2),
+        )
+        chunks: list[np.ndarray] = []
+        start = 0
+        while start < len(audio):
+            if start + chunk_size >= len(audio):
+                chunks.append(audio[start:])
+                break
+
+            search_end = start + chunk_size
+            search_start = search_end - boundary_search_size
+            split = self._find_quietest_split(
+                audio,
+                search_start,
+                search_end,
+                sample_rate,
+            )
+            split = max(start + 1, min(split, len(audio)))
+            chunks.append(audio[start:split])
+            start = split
+        return chunks
+
     def transcribe(
         self,
         audio_path: Path,
@@ -275,18 +333,15 @@ class CohereOnnxService:
                     mono=True,
                     dtype=np.float32,
                 )
-                chunk_size = int(
-                    self._config.cohere_chunk_duration_seconds * sample_rate
-                )
-                chunk_starts = range(0, len(audio), chunk_size)
-                chunk_count = len(chunk_starts)
+                audio_chunks = self._split_audio(audio, sample_rate)
+                chunk_count = len(audio_chunks)
                 logger.info(
                     "Starting Cohere transcription of %.1f seconds in %d chunk(s)",
                     len(audio) / sample_rate,
                     chunk_count,
                 )
                 chunk_transcripts: list[str] = []
-                for chunk_index, start in enumerate(chunk_starts, start=1):
+                for chunk_index, audio_chunk in enumerate(audio_chunks, start=1):
                     logger.info(
                         "Transcribing Cohere chunk %d/%d",
                         chunk_index,
@@ -295,7 +350,7 @@ class CohereOnnxService:
                     chunk_transcripts.append(
                         self._decode(
                             backend,
-                            audio[start : start + chunk_size],
+                            audio_chunk,
                             language,
                         )
                     )
