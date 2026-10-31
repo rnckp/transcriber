@@ -3,7 +3,7 @@ name = "transcriber"
 version = "0.1.0"
 description = "Local browser-based transcription app for Apple Silicon Macs"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12, <3.15"
 dependencies = [
     "accelerate>=1.13.0",
     "diffusers>=0.37.1",
