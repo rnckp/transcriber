@@ -21,7 +21,7 @@ dependencies = [
     "soundfile>=0.13.1",
     "torch>=2.12.0",
     "tqdm>=4.67.3",
-    "transformers>=4.51.3,<5.0.0",
+    "transformers>=5.10.1,<6.0.0",
     "uvicorn[standard]>=0.30.6",
 ]
 
